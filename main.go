@@ -47,28 +47,32 @@ func (c *client) newBranchFromHead(ctx context.Context, owner, repo, branchName 
 	return nil
 }
 
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////// main ////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
 var (
 	token = flag.String("token", "", "github token")
 )
 
-var qs = []*survey.Question{
-	{
+func main() {
+	flag.Parse()
+
+	qs := []*survey.Question{{
 		Name: "owner",
 		Prompt: &survey.Input{
 			Message: "Who is the owner of the repo?",
 			Default: "menghanl",
 		},
 		Validate: survey.Required,
-	},
-	{
+	}, {
 		Name: "repo",
 		Prompt: &survey.Input{
 			Message: "What is the name of the repo?",
 			Default: "release-note-gen",
 		},
 		Validate: survey.Required,
-	},
-	{
+	}, {
 		Name: "release",
 		Prompt: &survey.Input{
 			Message: "What is the major release number (e.g. 1.12)?",
@@ -76,11 +80,7 @@ var qs = []*survey.Question{
 			Default: "1.12", // TODO: remove default.
 		},
 		Validate: survey.Required, // TODO: release number validator.
-	},
-}
-
-func main() {
-	flag.Parse()
+	}}
 
 	answers := struct {
 		Owner   string
@@ -88,8 +88,7 @@ func main() {
 		Release string
 	}{}
 
-	err := survey.Ask(qs, &answers)
-	if err != nil {
+	if err := survey.Ask(qs, &answers); err != nil {
 		log.Fatal(err)
 		return
 	}
