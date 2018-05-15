@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/menghanl/release-git-bot/ghwrapper"
+	"github.com/menghanl/release-git-bot/gitwrapper"
 	"golang.org/x/oauth2"
 	"gopkg.in/AlecAivazis/survey.v1"
 
@@ -18,6 +19,9 @@ var (
 )
 
 func main() {
+	gitwrapper.Try()
+	return
+
 	flag.Parse()
 
 	qs := []*survey.Question{{
