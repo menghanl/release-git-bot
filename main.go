@@ -3,53 +3,15 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net/http"
 
 	"github.com/google/go-github/github"
+	"github.com/menghanl/release-git-bot/ghwrapper"
 	"golang.org/x/oauth2"
 	"gopkg.in/AlecAivazis/survey.v1"
 
 	log "github.com/sirupsen/logrus"
 )
-
-type client struct {
-	c *github.Client
-}
-
-func (c *client) newBranchFromHead(ctx context.Context, owner, repo, branchName string) error {
-	log.Infof("creating branch: %v/%v/%v", owner, repo, branchName)
-
-	refName := "heads/" + branchName
-	// Check if ref already exists.
-	if ref, _, err := c.c.Git.GetRef(ctx, owner, repo, refName); err == nil {
-		log.Infof("ref already exists: %v", ref)
-		return nil
-	}
-
-	// Get head SHA.
-	ref, _, err := c.c.Git.GetRef(ctx, owner, repo, "heads/master")
-	if err != nil {
-		return fmt.Errorf("failed to get master hash: %v", err)
-	}
-	log.Infof("hash for HEAD: %v", ref.GetObject().GetSHA())
-
-	// Create new ref.
-	newRef, _, err := c.c.Git.CreateRef(ctx, owner, repo, &github.Reference{
-		Ref:    &refName,
-		Object: ref.GetObject(),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create ref: %v", err)
-	}
-
-	log.Infof("new ref created: %v", newRef.String())
-	return nil
-}
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////// main ////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
 
 var (
 	token = flag.String("token", "", "github token")
@@ -104,8 +66,8 @@ func main() {
 		tc = oauth2.NewClient(ctx, ts)
 	}
 
-	c := &client{c: github.NewClient(tc)}
-	if err := c.newBranchFromHead(context.Background(), answers.Owner, answers.Repo, "v"+answers.Release+".x"); err != nil {
+	c := ghwrapper.NewClient(github.NewClient(tc))
+	if err := c.NewBranchFromHead(context.Background(), answers.Owner, answers.Repo, "v"+answers.Release+".x"); err != nil {
 		log.Fatal(err)
 	}
 }
