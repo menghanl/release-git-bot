@@ -15,7 +15,7 @@ type Repo struct {
 }
 
 // GithubClone creates a new Repo by cloning from github.
-func GithubClone(owner, repo string) *Repo {
+func GithubClone(owner, repo string) (*Repo, error) {
 	url := fmt.Sprintf("https://github.com/%v/%v", owner, repo)
 
 	r, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
@@ -23,12 +23,12 @@ func GithubClone(owner, repo string) *Repo {
 	})
 
 	if err != nil {
-		log.Fatalf("failed to clone: %v", err)
+		return nil, err
 	}
 
 	return &Repo{
 		r: r,
-	}
+	}, nil
 }
 
 // PrintHead prints head.
