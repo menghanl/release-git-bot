@@ -6,14 +6,14 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
-// Try is called by main to try commands.
-func Try() {
-	owner := "menghanl"
-	repo := "release-note-gen"
+// Repo represends a git repo.
+type Repo struct{}
+
+// GithubClone creates a new Repo by cloning from github.
+func GithubClone(owner, repo string) *Repo {
 	url := fmt.Sprintf("https://github.com/%v/%v", owner, repo)
 
 	// Clones the given repository in memory, creating the remote, the local
@@ -43,12 +43,8 @@ func Try() {
 		log.Fatalf("failed to call Log(): %v", err)
 	}
 
-	// ... just iterates over the commits, printing it
-	err = cIter.ForEach(func(c *object.Commit) error {
-		fmt.Println(c)
-		return nil
-	})
-	if err != nil {
-		log.Fatalf("failed to call iter.ForEach(): %v", err)
+	if c, err := cIter.Next(); err == nil {
+		log.Info(c.String())
 	}
+	return &Repo{}
 }
