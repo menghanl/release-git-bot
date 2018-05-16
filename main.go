@@ -19,7 +19,8 @@ var (
 )
 
 func main() {
-	gitwrapper.GithubClone("menghanl", "release-note-gen")
+	r := gitwrapper.GithubClone("menghanl", "release-note-gen")
+	r.PrintHead()
 	return
 
 	flag.Parse()
