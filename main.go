@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to github clone: %v", err)
 	}
-	r.PrintHead()
+	r.Try()
 	return
 
 	flag.Parse()

@@ -3,6 +3,8 @@ package gitwrapper
 
 import (
 	"fmt"
+	"io"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
@@ -36,8 +38,8 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	}, nil
 }
 
-// PrintHead prints head.
-func (r *Repo) PrintHead() {
+// Try prints head.
+func (r *Repo) Try() {
 	// ... retrieves the branch pointed by HEAD
 	ref, err := r.r.Head()
 	if err != nil {
@@ -50,7 +52,12 @@ func (r *Repo) PrintHead() {
 		log.Fatalf("failed to call Log(): %v", err)
 	}
 
-	if c, err := cIter.Next(); err == nil {
-		log.Info(c.String())
+	c, err := cIter.Next()
+	if err != nil {
+		log.Fatalf("failed to get first commit: %v", err)
 	}
+	log.Info(c.String())
+
+	readme, _ := r.fs.Open("README.md")
+	io.Copy(os.Stdout, readme)
 }
