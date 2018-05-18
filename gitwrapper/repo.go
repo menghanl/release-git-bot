@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+
 	"github.com/alecthomas/template"
 	"github.com/menghanl/mydump"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +42,19 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	}, nil
 }
 
+func (r *Repo) headCommit() (*object.Commit, error) {
+	ref, err := r.r.Head()
+	if err != nil {
+		return nil, fmt.Errorf("failed to call Head(): %v", err)
+	}
+
+	headCommit, err := r.r.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to find commit for head: %v", err)
+	}
+	return headCommit, nil
+}
+
 func (r *Repo) updateVersionFile(newVersion string) error {
 	versionFile, err := r.fs.OpenFile("version.go", os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -69,23 +84,11 @@ func (r *Repo) currentStatus() (git.Status, error) {
 
 // Try prints head.
 func (r *Repo) Try() {
-	// ... retrieves the branch pointed by HEAD
-	ref, err := r.r.Head()
+	headCommit, err := r.headCommit()
 	if err != nil {
-		log.Fatalf("failed to call Head(): %v", err)
+		log.Fatal(err)
 	}
-
-	// ... retrieves the commit history
-	cIter, err := r.r.Log(&git.LogOptions{From: ref.Hash()})
-	if err != nil {
-		log.Fatalf("failed to call Log(): %v", err)
-	}
-
-	c, err := cIter.Next()
-	if err != nil {
-		log.Fatalf("failed to get first commit: %v", err)
-	}
-	log.Info(c.String())
+	log.Info(headCommit.String())
 
 	//////////////
 
