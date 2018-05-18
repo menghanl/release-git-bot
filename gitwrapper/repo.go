@@ -162,4 +162,9 @@ func (r *Repo) Try() {
 	}
 
 	// git push -u
+	if err := r.r.Push(&git.PushOptions{
+		Progress: os.Stdout,
+	}); err != nil {
+		log.Fatalf("failed to push: %v", err)
+	}
 }
