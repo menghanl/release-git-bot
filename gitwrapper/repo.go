@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/alecthomas/template"
+	"github.com/menghanl/mydump"
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
@@ -38,6 +40,33 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	}, nil
 }
 
+func (r *Repo) updateVersionFile(newVersion string) error {
+	versionFile, err := r.fs.OpenFile("version.go", os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file version.go: %v", err)
+	}
+	defer versionFile.Close()
+
+	t := template.Must(template.New("version").Parse(versionTemplate))
+	err = t.Execute(versionFile, map[string]string{"version": newVersion})
+	if err != nil {
+		return fmt.Errorf("failed to execute template to file: %v", err)
+	}
+	return nil
+}
+
+func (r *Repo) currentStatus() (git.Status, error) {
+	worktree, err := r.r.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worktree: %v", err)
+	}
+	status, err := worktree.Status()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get status from worktree: %v", err)
+	}
+	return status, nil
+}
+
 // Try prints head.
 func (r *Repo) Try() {
 	// ... retrieves the branch pointed by HEAD
@@ -58,6 +87,19 @@ func (r *Repo) Try() {
 	}
 	log.Info(c.String())
 
-	readme, _ := r.fs.Open("README.md")
-	io.Copy(os.Stdout, readme)
+	//////////////
+
+	if err := r.updateVersionFile("new-version"); err != nil {
+		log.Fatal(err)
+	}
+	status, err := r.currentStatus()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Infof("%v\n", status)
+	mydump.Dump(status)
+
+	log.Info("--- reading new file")
+	versionFile, err := r.fs.Open("version.go")
+	io.Copy(os.Stdout, versionFile)
 }

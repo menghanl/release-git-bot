@@ -19,7 +19,7 @@ var (
 )
 
 func main() {
-	r, err := gitwrapper.GithubClone("menghanl", "release-note-gen")
+	r, err := gitwrapper.GithubClone("menghanl", "grpc-go")
 	if err != nil {
 		log.Fatalf("failed to github clone: %v", err)
 	}
