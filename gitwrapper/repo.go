@@ -88,6 +88,29 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 	return nil
 }
 
+func (r *Repo) printDiffInHeadCommit() error {
+	headRef, err := r.r.Head()
+	if err != nil {
+		return fmt.Errorf("failed to call Head(): %v", err)
+	}
+	headCommit, err := r.r.CommitObject(headRef.Hash())
+	if err != nil {
+		return fmt.Errorf("failed to get head commit: %v", err)
+	}
+	parentCommit, err := headCommit.Parent(0)
+	if err != nil {
+		return fmt.Errorf("failed to get parent of head: %v", err)
+	}
+
+	// patch, err := parentTree.Patch(headTree)
+	patch, err := parentCommit.Patch(headCommit)
+	if err != nil {
+		return fmt.Errorf("failed to get patch: %v", err)
+	}
+	log.Info(patch)
+	return nil
+}
+
 // Try prints head.
 func (r *Repo) Try() {
 	// git checkout -b release_version
@@ -111,7 +134,7 @@ func (r *Repo) Try() {
 
 	// git commit -m 'Change version to %v'
 	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
-	newCommitHash, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
+	_, err = r.worktree.Commit(commitMsg, &git.CommitOptions{
 		All: true,
 		Author: &object.Signature{
 			Name:  "release bot",
@@ -123,32 +146,9 @@ func (r *Repo) Try() {
 		log.Fatalf("failed to commit: %v", err)
 	}
 
-	newCommit, err := r.r.CommitObject(newCommitHash)
-	if err != nil {
-		log.Fatalf("failed to find new commit: %v", err)
+	if err := r.printDiffInHeadCommit(); err != nil {
+		log.Fatal(err)
 	}
-	log.Info(newCommit.String())
-
-	oldHeadTree, err := headCommit.Tree()
-	if err != nil {
-		log.Fatalf("failed to get tree from old head: %v", err)
-	}
-	newTree, err := newCommit.Tree()
-	if err != nil {
-		log.Fatalf("failed to get tree from commit: %v", err)
-	}
-
-	diff, err := newTree.Diff(oldHeadTree)
-	if err != nil {
-		log.Fatalf("failed to get diff: %v", err)
-	}
-	log.Info(diff)
-
-	patch, err := oldHeadTree.Patch(newTree)
-	if err != nil {
-		log.Fatalf("failed to get patch: %v", err)
-	}
-	log.Info(patch)
 
 	// git push -u
 }
