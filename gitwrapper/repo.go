@@ -77,20 +77,18 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 
 // Try prints head.
 func (r *Repo) Try() {
-	// git branch release_version
-	// git checkout release_version
-	// make change to file
-	// git commit -m 'Change version to %v'
-	// git push -u
 
+	// git branch release_version
 	headCommit, err := r.headCommit()
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Info(headCommit.String())
+	// git checkout release_version
 
 	const newVersion = "new-version"
 
+	// make change to file
 	if err := r.updateVersionFile(newVersion); err != nil {
 		log.Fatal(err)
 	}
@@ -100,11 +98,7 @@ func (r *Repo) Try() {
 	}
 	log.Infof("current worktree status: \n%v", status)
 
-	// log.Info("--- reading new file")
-	// versionFile, err := r.fs.Open("version.go")
-	// io.Copy(os.Stdout, versionFile)
-
-	// TODO: move commit to a separate function.
+	// git commit -m 'Change version to %v'
 	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
 	newCommitHash, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
 		All: true,
@@ -144,4 +138,6 @@ func (r *Repo) Try() {
 		log.Fatalf("failed to get patch: %v", err)
 	}
 	log.Info(patch)
+
+	// git push -u
 }
