@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"gopkg.in/src-d/go-git.v4/plumbing"
+
 	"github.com/alecthomas/template"
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
@@ -47,11 +49,22 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	}, nil
 }
 
-func (r *Repo) headCommit() (*object.Commit, error) {
+func (r *Repo) createAndCheckoutBranch(name string) (*object.Commit, error) {
 	ref, err := r.r.Head()
 	if err != nil {
 		return nil, fmt.Errorf("failed to call Head(): %v", err)
 	}
+
+	err = r.worktree.Checkout(&git.CheckoutOptions{
+		Hash:   ref.Hash(),
+		Branch: plumbing.ReferenceName("refs/heads/" + name),
+		Create: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to checkout to new branch: %v", err)
+	}
+
+	// newRef := plumbing.NewHashReference("refs/heads/my-branch", headRef.Hash())
 
 	headCommit, err := r.r.CommitObject(ref.Hash())
 	if err != nil {
@@ -77,16 +90,14 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 
 // Try prints head.
 func (r *Repo) Try() {
-
-	// git branch release_version
-	headCommit, err := r.headCommit()
+	// git checkout -b release_version
+	headCommit, err := r.createAndCheckoutBranch("release_version")
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Info(headCommit.String())
-	// git checkout release_version
 
-	const newVersion = "new-version"
+	const newVersion = "1.new.0"
 
 	// make change to file
 	if err := r.updateVersionFile(newVersion); err != nil {
