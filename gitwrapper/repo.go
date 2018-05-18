@@ -3,13 +3,11 @@ package gitwrapper
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/alecthomas/template"
-	"github.com/menghanl/mydump"
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
@@ -19,7 +17,9 @@ import (
 
 // Repo represends a git repo.
 type Repo struct {
-	r  *git.Repository
+	r        *git.Repository
+	worktree *git.Worktree
+
 	fs billy.Filesystem
 }
 
@@ -31,14 +31,19 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	r, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
 		URL: url,
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
+	worktree, err := r.Worktree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get worktree: %v", err)
+	}
+
 	return &Repo{
-		r:  r,
-		fs: fs,
+		r:        r,
+		worktree: worktree,
+		fs:       fs,
 	}, nil
 }
 
@@ -70,18 +75,6 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 	return nil
 }
 
-func (r *Repo) currentStatus() (git.Status, error) {
-	worktree, err := r.r.Worktree()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get worktree: %v", err)
-	}
-	status, err := worktree.Status()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get status from worktree: %v", err)
-	}
-	return status, nil
-}
-
 // Try prints head.
 func (r *Repo) Try() {
 	headCommit, err := r.headCommit()
@@ -95,14 +88,13 @@ func (r *Repo) Try() {
 	if err := r.updateVersionFile("new-version"); err != nil {
 		log.Fatal(err)
 	}
-	status, err := r.currentStatus()
+	status, err := r.worktree.Status()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to get status from worktree: %v", err)
 	}
-	log.Infof("%v\n", status)
-	mydump.Dump(status)
+	log.Infof("current worktree status: \n%v", status)
 
-	log.Info("--- reading new file")
-	versionFile, err := r.fs.Open("version.go")
-	io.Copy(os.Stdout, versionFile)
+	// log.Info("--- reading new file")
+	// versionFile, err := r.fs.Open("version.go")
+	// io.Copy(os.Stdout, versionFile)
 }
