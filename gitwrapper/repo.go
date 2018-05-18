@@ -4,14 +4,14 @@ package gitwrapper
 import (
 	"fmt"
 	"os"
-
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"time"
 
 	"github.com/alecthomas/template"
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 	git "gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
@@ -77,15 +77,21 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 
 // Try prints head.
 func (r *Repo) Try() {
+	// git branch release_version
+	// git checkout release_version
+	// make change to file
+	// git commit -m 'Change version to %v'
+	// git push -u
+
 	headCommit, err := r.headCommit()
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Info(headCommit.String())
 
-	//////////////
+	const newVersion = "new-version"
 
-	if err := r.updateVersionFile("new-version"); err != nil {
+	if err := r.updateVersionFile(newVersion); err != nil {
 		log.Fatal(err)
 	}
 	status, err := r.worktree.Status()
@@ -97,4 +103,45 @@ func (r *Repo) Try() {
 	// log.Info("--- reading new file")
 	// versionFile, err := r.fs.Open("version.go")
 	// io.Copy(os.Stdout, versionFile)
+
+	// TODO: move commit to a separate function.
+	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
+	newCommitHash, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
+		All: true,
+		Author: &object.Signature{
+			Name:  "release bot",
+			Email: "releasebot@grpc.io",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		log.Fatalf("failed to commit: %v", err)
+	}
+
+	newCommit, err := r.r.CommitObject(newCommitHash)
+	if err != nil {
+		log.Fatalf("failed to find new commit: %v", err)
+	}
+	log.Info(newCommit.String())
+
+	oldHeadTree, err := headCommit.Tree()
+	if err != nil {
+		log.Fatalf("failed to get tree from old head: %v", err)
+	}
+	newTree, err := newCommit.Tree()
+	if err != nil {
+		log.Fatalf("failed to get tree from commit: %v", err)
+	}
+
+	diff, err := newTree.Diff(oldHeadTree)
+	if err != nil {
+		log.Fatalf("failed to get diff: %v", err)
+	}
+	log.Info(diff)
+
+	patch, err := oldHeadTree.Patch(newTree)
+	if err != nil {
+		log.Fatalf("failed to get patch: %v", err)
+	}
+	log.Info(patch)
 }
