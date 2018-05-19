@@ -42,6 +42,9 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	}
 	r, err := git.Clone(s, fs, &git.CloneOptions{
 		URL: url,
+		// Only fetch master branch.
+		ReferenceName: plumbing.Master,
+		SingleBranch:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -149,6 +152,15 @@ func (r *Repo) printDiffInHeadCommit() error {
 	log.Info(patch)
 
 	return nil
+}
+
+// For debugging only.
+func (r *Repo) printRepoInfo() {
+	refs, _ := r.r.References()
+	refs.ForEach(func(r *plumbing.Reference) error {
+		fmt.Println(r)
+		return nil
+	})
 }
 
 // Try does the work.
