@@ -118,6 +118,7 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
 	if _, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
 		Author: &object.Signature{
+			// TODO: change name and email here.
 			Name:  "release bot",
 			Email: "releasebot@grpc.io",
 			When:  time.Now(),
