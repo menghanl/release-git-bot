@@ -8,13 +8,14 @@ import (
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
 	"github.com/alecthomas/template"
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
 	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
+	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 )
 
 // Repo represends a git repo.
@@ -31,7 +32,15 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	log.Infof("executing %q", "git clone "+url)
 
 	fs := memfs.New()
-	r, err := git.Clone(memory.NewStorage(), fs, &git.CloneOptions{
+	gitdir, err := fs.Chroot(".git")
+	if err != nil {
+		return nil, fmt.Errorf("failed to chroot(.git): %v", err)
+	}
+	s, err := filesystem.NewStorage(gitdir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create storage: %v", err)
+	}
+	r, err := git.Clone(s, fs, &git.CloneOptions{
 		URL: url,
 	})
 	if err != nil {
@@ -99,12 +108,12 @@ func (r *Repo) updateVersionFile(newVersion string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get status from worktree: %v", err)
 	}
+	r.worktree.Add("version.go")
 	log.Infof("current worktree status (git status):\n%v", status)
 
 	log.Infof("executing %q", "git commit -m 'Change version to %v'")
 	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
 	if _, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
-		All: true,
 		Author: &object.Signature{
 			Name:  "release bot",
 			Email: "releasebot@grpc.io",
@@ -163,6 +172,10 @@ func (r *Repo) Try() {
 
 	// git push -u
 	if err := r.r.Push(&git.PushOptions{
+		Auth: &http.BasicAuth{
+			Username: "menghanl",
+			Password: "TODO: pass auth token in",
+		},
 		Progress: os.Stdout,
 	}); err != nil {
 		log.Fatalf("failed to push: %v", err)
