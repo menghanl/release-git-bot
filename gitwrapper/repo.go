@@ -62,29 +62,43 @@ func GithubClone(owner, repo string) (*Repo, error) {
 	}, nil
 }
 
-func (r *Repo) createAndCheckoutBranch(name string) error {
-	ref, err := r.r.Head()
+// checkoutBranch checks out to the given branch.
+//
+// If the branch doesn't exist, a new one will be created.
+func (r *Repo) checkoutBranch(name string) error {
+	head, err := r.r.Head()
 	if err != nil {
 		return fmt.Errorf("failed to call Head(): %v", err)
 	}
-	log.Infof("HEAD at: %v", ref)
+	log.Infof("HEAD at: %v", head)
 
-	log.Infof("executing %q", "checkout -b"+name)
+	newRefName := plumbing.ReferenceName("refs/heads/" + name)
+	if _, err := r.r.Reference(newRefName, false); err != nil {
+		if err != plumbing.ErrReferenceNotFound {
+			return fmt.Errorf("failed to find ref: %v", err)
+		}
+		// If new ref doesn't exist, create it.
+		log.Infof("executing %q", "branch "+name)
+		newRef := plumbing.NewHashReference(newRefName, head.Hash())
+		if err := r.r.Storer.SetReference(newRef); err != nil {
+			return fmt.Errorf("failed to add ref to storer: %v", err)
+		}
+	}
+
+	log.Infof("executing %q", "checkout "+name)
 	if err := r.worktree.Checkout(&git.CheckoutOptions{
-		Hash:   ref.Hash(),
-		Branch: plumbing.ReferenceName("refs/heads/" + name),
-		Create: true,
+		Branch: newRefName,
 	}); err != nil {
 		return fmt.Errorf("failed to checkout to new branch: %v", err)
 	}
 
-	ref, err = r.r.Head()
+	newHead, err := r.r.Head()
 	if err != nil {
 		return fmt.Errorf("failed to call Head(): %v", err)
 	}
-	log.Infof("HEAD at: %v", ref)
+	log.Infof("HEAD at: %v", newHead)
 
-	commit, err := r.r.CommitObject(ref.Hash())
+	commit, err := r.r.CommitObject(newHead.Hash())
 	if err != nil {
 		return fmt.Errorf("failed to find commit for head: %v", err)
 	}
@@ -167,7 +181,7 @@ func (r *Repo) printRepoInfo() {
 // Try does the work.
 func (r *Repo) Try() {
 	// git checkout -b release_version
-	if err := r.createAndCheckoutBranch("release_version"); err != nil {
+	if err := r.checkoutBranch("release_version"); err != nil {
 		log.Fatal(err)
 	}
 
