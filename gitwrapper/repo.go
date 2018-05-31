@@ -11,7 +11,6 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
-	"github.com/alecthomas/template"
 	log "github.com/sirupsen/logrus"
 	billy "gopkg.in/src-d/go-billy.v4"
 	"gopkg.in/src-d/go-billy.v4/memfs"
@@ -27,9 +26,8 @@ type Repo struct {
 	fs billy.Filesystem
 }
 
-// GithubClone creates a new Repo by cloning from github.
-func GithubClone(owner, repo string) (*Repo, error) {
-	url := fmt.Sprintf("https://github.com/%v/%v", owner, repo)
+// cloneRepo creates a new Repo by cloning from github.
+func cloneRepo(url string) (*Repo, error) {
 	log.Infof("executing %q", "git clone "+url)
 
 	fs := memfs.New()
@@ -108,14 +106,6 @@ func (r *Repo) checkoutBranch(name string) error {
 	return nil
 }
 
-func (r *Repo) updateVersionFile(newVersion string) error {
-	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
-	return r.updateFile("version.go", commitMsg, func(w io.Writer) error {
-		t := template.Must(template.New("version").Parse(versionTemplate))
-		return t.Execute(w, map[string]string{"version": newVersion})
-	})
-}
-
 func (r *Repo) updateFile(filepath, commitMsg string, write func(io.Writer) error) error {
 	log.Infof("executing %q", "edit "+filepath)
 	fileT, err := r.fs.OpenFile(filepath, os.O_WRONLY|os.O_TRUNC, 0644)
@@ -151,6 +141,19 @@ func (r *Repo) updateFile(filepath, commitMsg string, write func(io.Writer) erro
 	return nil
 }
 
+func (r *Repo) push(username, password string) error {
+	if err := r.r.Push(&git.PushOptions{
+		Auth: &http.BasicAuth{
+			Username: username,
+			Password: password,
+		},
+		Progress: os.Stdout,
+	}); err != nil {
+		return fmt.Errorf("failed to push: %v", err)
+	}
+	return nil
+}
+
 func (r *Repo) printDiffInHeadCommit() error {
 	log.Infof("executing %q", "git diff HEAD~")
 	headRef, err := r.r.Head()
@@ -183,35 +186,4 @@ func (r *Repo) printRepoInfo() {
 		fmt.Println(r)
 		return nil
 	})
-}
-
-// Try does the work.
-func (r *Repo) Try() {
-	// git checkout -b release_version
-	if err := r.checkoutBranch("release_version"); err != nil {
-		log.Fatal(err)
-	}
-
-	// edit file
-	// git commit -m 'Change version to %v'
-	const newVersion = "1.new.0"
-	if err := r.updateVersionFile(newVersion); err != nil {
-		log.Fatal(err)
-	}
-
-	// git diff HEAD~
-	if err := r.printDiffInHeadCommit(); err != nil {
-		log.Fatal(err)
-	}
-
-	// git push -u
-	if err := r.r.Push(&git.PushOptions{
-		Auth: &http.BasicAuth{
-			Username: "menghanl",
-			Password: "TODO: pass auth token in",
-		},
-		Progress: os.Stdout,
-	}); err != nil {
-		log.Fatalf("failed to push: %v", err)
-	}
 }
