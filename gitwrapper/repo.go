@@ -3,6 +3,7 @@ package gitwrapper
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -108,28 +109,34 @@ func (r *Repo) checkoutBranch(name string) error {
 }
 
 func (r *Repo) updateVersionFile(newVersion string) error {
-	log.Infof("executing %q", "edit version.go")
-	versionFile, err := r.fs.OpenFile("version.go", os.O_WRONLY|os.O_TRUNC, 0644)
+	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
+	return r.updateFile("version.go", commitMsg, func(w io.Writer) error {
+		t := template.Must(template.New("version").Parse(versionTemplate))
+		return t.Execute(w, map[string]string{"version": newVersion})
+	})
+}
+
+func (r *Repo) updateFile(filepath, commitMsg string, write func(io.Writer) error) error {
+	log.Infof("executing %q", "edit "+filepath)
+	fileT, err := r.fs.OpenFile(filepath, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to open file version.go: %v", err)
+		return fmt.Errorf("failed to open file %q: %v", filepath, err)
 	}
-	t := template.Must(template.New("version").Parse(versionTemplate))
-	err = t.Execute(versionFile, map[string]string{"version": newVersion})
+	err = write(fileT)
 	if err != nil {
-		versionFile.Close()
-		return fmt.Errorf("failed to execute template to file: %v", err)
+		fileT.Close()
+		return fmt.Errorf("failed to write to file: %v", err)
 	}
-	versionFile.Close()
+	fileT.Close()
 
 	status, err := r.worktree.Status()
 	if err != nil {
 		return fmt.Errorf("failed to get status from worktree: %v", err)
 	}
-	r.worktree.Add("version.go")
+	r.worktree.Add(filepath)
 	log.Infof("current worktree status (git status):\n%v", status)
 
-	log.Infof("executing %q", "git commit -m 'Change version to %v'")
-	commitMsg := fmt.Sprintf("Change version to %v", newVersion)
+	log.Infof("executing %q", "git commit -m '"+commitMsg+"'")
 	if _, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
 		Author: &object.Signature{
 			// TODO: change name and email here.
