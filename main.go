@@ -42,7 +42,7 @@ func main() {
 	}
 
 	if err := r.Publish(&gitwrapper.PublicConfig{
-		RemoteName: "", // FIXME:
+		RemoteName: "", // FIXME: specify parent or the fork.
 		Auth: &gitwrapper.AuthConfig{
 			Username: username,
 			Password: password,
@@ -74,7 +74,7 @@ func main() {
 		Prompt: &survey.Input{
 			Message: "What is the major release number (e.g. 1.12)?",
 			Help:    "Only the major release number, without v, without minor release number",
-			Default: "1.12", // TODO: remove default.
+			Default: "1.12", // TODO: find the next release.
 		},
 		Validate: survey.Required, // TODO: release number validator.
 	}}
@@ -105,4 +105,6 @@ func main() {
 	if err := c.NewBranchFromHead(context.Background(), answers.Owner, answers.Repo, "v"+answers.Release+".x"); err != nil {
 		log.Fatal(err)
 	}
+
+	// TODO: get fork parent.
 }
