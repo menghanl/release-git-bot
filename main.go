@@ -18,6 +18,13 @@ var (
 	token = flag.String("token", "", "github token")
 )
 
+// TODO: make those flags.
+const (
+	newVersion = "1.new.0"
+	username   = "menghanl"
+	password   = "TODO: pass auth token in"
+)
+
 func main() {
 	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
 		Owner: "menghanl",
@@ -26,7 +33,24 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to github clone: %v", err)
 	}
-	r.Try()
+
+	if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
+		VersionFile: "version.go",
+		NewVersion:  newVersion,
+	}); err != nil {
+		log.Fatalf("failed to make change: %v", err)
+	}
+
+	if err := r.Publish(&gitwrapper.PublicConfig{
+		RemoteName: "", // FIXME:
+		Auth: &gitwrapper.AuthConfig{
+			Username: username,
+			Password: password,
+		},
+	}); err != nil {
+		log.Fatalf("failed to public change: %v", err)
+	}
+
 	return
 
 	flag.Parse()

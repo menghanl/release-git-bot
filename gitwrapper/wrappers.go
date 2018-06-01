@@ -3,12 +3,19 @@ package gitwrapper
 import (
 	"fmt"
 	"io"
-	"log"
 )
 
 const (
 	branchName = "release_version"
 )
+
+// AuthConfig configures auth.
+type AuthConfig struct {
+	// Username is the auth username.
+	Username string
+	// Password is the auth password.
+	Password string
+}
 
 // GithubCloneConfig config github clone.
 type GithubCloneConfig struct {
@@ -24,25 +31,6 @@ func GithubClone(c *GithubCloneConfig) (*Repo, error) {
 	return cloneRepo(url)
 }
 
-// Try does the work.
-func (r *Repo) Try() {
-	const (
-		newVersion = "1.new.0"
-		username   = "menghanl"
-		password   = "TODO: pass auth token in"
-	)
-	c := &VersionChangeConfig{
-		VersionFile: "version.go",
-		NewVersion:  newVersion,
-
-		Username: username,
-		Password: password,
-	}
-	if err := r.MakeVersionChange(c); err != nil {
-		log.Fatalf("failed to make change: %v", err)
-	}
-}
-
 // VersionChangeConfig contains the settings to make a version change.
 type VersionChangeConfig struct {
 	// VersionFile is the filepath of the version file.
@@ -52,10 +40,6 @@ type VersionChangeConfig struct {
 
 	// Changes won't be pushed to remote if LocalOnly is true.
 	LocalOnly bool
-	// Username is the auth username.
-	Username string
-	// Password is the auth password.
-	Password string
 }
 
 // MakeVersionChange makes the version change in repo.
@@ -85,9 +69,23 @@ func (r *Repo) MakeVersionChange(c *VersionChangeConfig) error {
 	if err := r.printDiffInHeadCommit(); err != nil {
 		return err
 	}
+	return nil
+}
+
+// PublicConfig configures public.
+type PublicConfig struct {
+	// The remote to be pushed to.
+	RemoteName string
+	// The config for auth.
+	Auth *AuthConfig
+}
+
+// Publish pushes the local change.
+func (r *Repo) Publish(c *PublicConfig) error {
+	// FIXME: push remote
 
 	// git push -u
-	if err := r.push(c.Username, c.Password); err != nil {
+	if err := r.push(c.Auth.Username, c.Auth.Password); err != nil {
 		return err
 	}
 	return nil
