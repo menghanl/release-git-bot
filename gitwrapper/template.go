@@ -1,8 +1,10 @@
 package gitwrapper
 
+import "github.com/alecthomas/template"
+
 // TODO: read template file instead.
 // https://godoc.org/text/template#ParseFiles
-const versionTemplate = `/*
+const versionTemplateStr = `/*
  *
  * Copyright 2018 gRPC authors.
  *
@@ -25,3 +27,5 @@ package grpc
 // Version is the current grpc version.
 const Version = "{{.version}}"
 `
+
+var versionTemplate = template.Must(template.New("version").Parse(versionTemplateStr))

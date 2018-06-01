@@ -19,7 +19,10 @@ var (
 )
 
 func main() {
-	r, err := gitwrapper.GithubClone("menghanl", "grpc-go")
+	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+		Owner: "menghanl",
+		Repo:  "grpc-go",
+	})
 	if err != nil {
 		log.Fatalf("failed to github clone: %v", err)
 	}
