@@ -39,3 +39,10 @@ func (c *Client) GetMergedPRsForLabels(labels []string) []*github.Issue {
 func (c *Client) GetOrgMembers(org string) map[string]struct{} {
 	return c.getOrgMembers(org)
 }
+
+// CommitIDForMergedPR returns the commit id for pr.
+//
+// It returns "" if pr is not a merged PR.
+func (c *Client) CommitIDForMergedPR(pr *github.Issue) string {
+	return c.commitIDForMergedPR(pr)
+}

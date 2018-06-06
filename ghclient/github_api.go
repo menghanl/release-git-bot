@@ -143,3 +143,18 @@ func (c *Client) getOrgMembers(org string) map[string]struct{} {
 	log.Infof("%v members in org %v\n", count, org)
 	return ret
 }
+
+func (c *Client) commitIDForMergedPR(pr *github.Issue) string {
+	ctx := context.Background()
+	mergeEvent, err := c.getMergeEventForPR(ctx, pr)
+	if err != nil {
+		log.Info("failed to get merge event: ", err)
+		return ""
+	}
+	// cmt, _, err := c.c.Repositories.GetCommit(ctx, c.owner, c.repo, mergeEvent.GetCommitID())
+	// if err != nil {
+	// 	log.Info("failed to get commit: ", err)
+	// 	return ""
+	// }
+	return mergeEvent.GetCommitID()
+}
