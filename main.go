@@ -8,6 +8,7 @@ import (
 
 	"github.com/menghanl/release-git-bot/ghclient"
 	"github.com/menghanl/release-git-bot/gitwrapper"
+	"github.com/menghanl/release-git-bot/notes"
 	"golang.org/x/oauth2"
 	"gopkg.in/AlecAivazis/survey.v1"
 
@@ -37,11 +38,29 @@ func main() {
 		tc = oauth2.NewClient(ctx, ts)
 	}
 
-	c := ghclient.New(tc, "grpc", "grpc-go")
+	var (
+		owner   = "grpc"
+		repo    = "grpc-go"
+		release = "v1.12.2"
+	)
+
+	c := ghclient.New(tc, owner, repo)
 	// prs := c.GetMergedPRsForMilestone("1.13 Release")
 	prs := c.GetMergedPRsForLabels([]string{"Cherry Pick"})
 	for i, pr := range prs {
 		fmt.Println(i, pr.GetNumber(), pr.GetTitle())
+	}
+	ns := notes.GenerateNotes(owner, repo, release, prs, notes.Filters{})
+	fmt.Printf("\n================ generated notes for org %q repo %q release %q ================\n\n", ns.Org, ns.Repo, ns.Version)
+	for _, section := range ns.Sections {
+		fmt.Printf("# %v\n\n", section.Name)
+		for _, entry := range section.Entries {
+			fmt.Printf(" * %v (#%v)\n", entry.Title, entry.IssueNumber)
+			if entry.SpecialThanks {
+				fmt.Printf("   - Special Thanks: @%v\n", entry.User.Login)
+			}
+		}
+		fmt.Println()
 	}
 }
 
