@@ -30,22 +30,6 @@ func (c *Client) getMilestoneNumberForTitle(ctx context.Context, milestoneTitle 
 	return 0, fmt.Errorf("no milestone with title %q was found", milestoneTitle)
 }
 
-func (c *Client) getClosedIssuesWithMilestoneNumber(ctx context.Context, milestoneNumber string) ([]*github.Issue, error) {
-	log.Info("milestone number: ", milestoneNumber)
-	issues, _, err := c.c.Issues.ListByRepo(ctx, c.owner, c.repo,
-		&github.IssueListByRepoOptions{
-			State:       "closed",
-			Milestone:   milestoneNumber,
-			ListOptions: github.ListOptions{PerPage: 1000},
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	log.Info("count issues", len(issues))
-	return issues, nil
-}
-
 func (c *Client) getMergeEventForPR(ctx context.Context, issue *github.Issue) (*github.IssueEvent, error) {
 	events, _, err := c.c.Issues.ListIssueEvents(ctx, c.owner, c.repo, issue.GetNumber(), &github.ListOptions{PerPage: 1000})
 	if err != nil {
@@ -95,16 +79,45 @@ func (c *Client) getMergedPRs(issues []*github.Issue) (prs []*github.Issue) {
 	return
 }
 
-func (c *Client) getMergedPRsForMilestone(milestoneTitle string) (prs []*github.Issue) {
+func (c *Client) getMergedPRsForMilestone(milestoneTitle string) []*github.Issue {
 	num, err := c.getMilestoneNumberForTitle(context.Background(), milestoneTitle)
 	if err != nil {
 		log.Info("failed to get milestone number: ", err)
 	}
-	issues, err := c.getClosedIssuesWithMilestoneNumber(context.Background(), strconv.Itoa(num))
+
+	// Get closed issues with milestone number.
+	milestoneNumberStr := strconv.Itoa(num)
+	log.Info("milestone number: ", milestoneNumberStr)
+	issues, _, err := c.c.Issues.ListByRepo(context.Background(), c.owner, c.repo,
+		&github.IssueListByRepoOptions{
+			State:       "closed",
+			Milestone:   milestoneNumberStr,
+			ListOptions: github.ListOptions{PerPage: 1000},
+		},
+	)
 	if err != nil {
-		log.Info("failed to get issues: ", err)
-		return
+		log.Info("failed to get closed issues for milestone: ", err)
+		return nil
 	}
+	log.Info("count issues", len(issues))
+	return c.getMergedPRs(issues)
+}
+
+func (c *Client) getMergedPRsForLabels(labels []string) []*github.Issue {
+	// Get closed issues with labels.
+	log.Info("labels: ", labels)
+	issues, _, err := c.c.Issues.ListByRepo(context.Background(), c.owner, c.repo,
+		&github.IssueListByRepoOptions{
+			State:       "closed",
+			Labels:      labels,
+			ListOptions: github.ListOptions{PerPage: 1000},
+		},
+	)
+	if err != nil {
+		log.Info("failed to get closed issues for milestone: ", err)
+		return nil
+	}
+	log.Info("count issues", len(issues))
 	return c.getMergedPRs(issues)
 }
 

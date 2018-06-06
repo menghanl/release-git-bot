@@ -23,9 +23,16 @@ func New(tc *http.Client, owner, repo string) *Client {
 	}
 }
 
-// GetMergedPRsForMilestone returns a list of github issues that are merged PRs for this milestone.
+// GetMergedPRsForMilestone returns a list of github issues that are merged PRs
+// for this milestone.
 func (c *Client) GetMergedPRsForMilestone(milestone string) []*github.Issue {
 	return c.getMergedPRsForMilestone(milestone)
+}
+
+// GetMergedPRsForLabels returns a list of github issues that are merged PRs
+// with the given label.
+func (c *Client) GetMergedPRsForLabels(labels []string) []*github.Issue {
+	return c.getMergedPRsForLabels(labels)
 }
 
 // GetOrgMembers returns a set of names of members in the org.

@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net/http"
 
+	"github.com/menghanl/release-git-bot/ghclient"
 	"github.com/menghanl/release-git-bot/gitwrapper"
 	"golang.org/x/oauth2"
 	"gopkg.in/AlecAivazis/survey.v1"
@@ -24,6 +26,26 @@ const (
 )
 
 func main() {
+	flag.Parse()
+
+	var tc *http.Client
+	if *token != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: *token},
+		)
+		tc = oauth2.NewClient(ctx, ts)
+	}
+
+	c := ghclient.New(tc, "grpc", "grpc-go")
+	// prs := c.GetMergedPRsForMilestone("1.13 Release")
+	prs := c.GetMergedPRsForLabels([]string{"Cherry Pick"})
+	for i, pr := range prs {
+		fmt.Println(i, pr.GetNumber(), pr.GetTitle())
+	}
+}
+
+func main2() {
 	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
 		Owner: "menghanl",
 		Repo:  "grpc-go",
