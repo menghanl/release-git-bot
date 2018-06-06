@@ -5,8 +5,6 @@ import (
 	"flag"
 	"net/http"
 
-	"github.com/google/go-github/github"
-	"github.com/menghanl/release-git-bot/ghwrapper"
 	"github.com/menghanl/release-git-bot/gitwrapper"
 	"golang.org/x/oauth2"
 	"gopkg.in/AlecAivazis/survey.v1"
@@ -101,10 +99,7 @@ func main() {
 		tc = oauth2.NewClient(ctx, ts)
 	}
 
-	c := ghwrapper.NewClient(github.NewClient(tc))
-	if err := c.NewBranchFromHead(context.Background(), answers.Owner, answers.Repo, "v"+answers.Release+".x"); err != nil {
-		log.Fatal(err)
-	}
+	_ = tc
 
 	// TODO: get fork parent.
 }
