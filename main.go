@@ -93,7 +93,9 @@ func main2() {
 	}
 
 	return
+}
 
+func surveyTemp() {
 	flag.Parse()
 
 	qs := []*survey.Question{{
