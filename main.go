@@ -1,14 +1,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
-	"net/http"
 
 	"github.com/blang/semver"
-	"github.com/menghanl/release-git-bot/ghclient"
-	"golang.org/x/oauth2"
+	"github.com/menghanl/release-git-bot/gitwrapper"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -36,20 +33,50 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid version string %q: %v", *newVersion, err)
 	}
+	log.Info("version is valid: ", ver.String())
 
-	var transportClient *http.Client
-	if *token != "" {
-		ctx := context.Background()
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: *token},
-		)
-		transportClient = oauth2.NewClient(ctx, ts)
+	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+		Owner: *user,
+		Repo:  *repo,
+	})
+	if err != nil {
+		log.Fatalf("failed to github clone: %v", err)
 	}
-	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
 
-	markdownNote := releaseNote(upstreamGithub, ver)
-	fmt.Println()
-	fmt.Println(markdownNote)
+	branchName := fmt.Sprintf("release_version_change_%v", *newVersion)
+	if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
+		VersionFile: "version.go",
+		NewVersion:  *newVersion,
+		BranchName:  branchName,
+	}); err != nil {
+		log.Fatalf("failed to make change: %v", err)
+	}
+
+	if err := r.Publish(&gitwrapper.PublicConfig{
+		// This could push to upstream directly, but to be safe, we send pull
+		// request instead.
+		RemoteName: "",
+		Auth: &gitwrapper.AuthConfig{
+			Username: *user,
+			Password: *token,
+		},
+	}); err != nil {
+		log.Fatalf("failed to public change: %v", err)
+	}
+
+	// var transportClient *http.Client
+	// if *token != "" {
+	// 	ctx := context.Background()
+	// 	ts := oauth2.StaticTokenSource(
+	// 		&oauth2.Token{AccessToken: *token},
+	// 	)
+	// 	transportClient = oauth2.NewClient(ctx, ts)
+	// }
+	// upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
+	// // Get and print the markdown release notes.
+	// markdownNote := releaseNote(upstreamGithub, ver)
+	// fmt.Println()
+	// fmt.Println(markdownNote)
 }
 
 // Function to make code version changes.

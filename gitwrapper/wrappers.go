@@ -5,10 +5,6 @@ import (
 	"io"
 )
 
-const (
-	branchName = "release_version"
-)
-
 // AuthConfig configures auth.
 type AuthConfig struct {
 	// Username is the auth username.
@@ -35,8 +31,11 @@ func GithubClone(c *GithubCloneConfig) (*Repo, error) {
 type VersionChangeConfig struct {
 	// VersionFile is the filepath of the version file.
 	VersionFile string
-	// NewVersion is the new version to be changed to.
+	// NewVersion is the new version to be changed to. It's a string so it could
+	// contain "-dev".
 	NewVersion string
+	// BranchName is the branch where the change will be made.
+	BranchName string
 
 	// Changes won't be pushed to remote if LocalOnly is true.
 	LocalOnly bool
@@ -44,8 +43,8 @@ type VersionChangeConfig struct {
 
 // MakeVersionChange makes the version change in repo.
 func (r *Repo) MakeVersionChange(c *VersionChangeConfig) error {
-	// git checkout -b release_version
-	if err := r.checkoutBranch(branchName); err != nil {
+	// git checkout -b release_version_1.14.0
+	if err := r.checkoutBranch(c.BranchName); err != nil {
 		return err
 	}
 
@@ -57,7 +56,7 @@ func (r *Repo) MakeVersionChange(c *VersionChangeConfig) error {
 
 	if err := r.updateFile(
 		c.VersionFile,
-		fmt.Sprintf("Change version to %v", c.NewVersion),
+		fmt.Sprintf("Change version to %v\n\n[skip ci] Changing versions only", c.NewVersion),
 		func(w io.Writer) error {
 			return versionTemplate.Execute(w, map[string]string{"version": c.NewVersion})
 		},
