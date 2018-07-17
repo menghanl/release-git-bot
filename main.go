@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net/http"
 
 	"github.com/blang/semver"
-	"github.com/menghanl/release-git-bot/gitwrapper"
+	"github.com/menghanl/release-git-bot/ghclient"
+	"golang.org/x/oauth2"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -35,44 +38,50 @@ func main() {
 	}
 	log.Info("version is valid: ", ver.String())
 
-	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
-		Owner: *user,
-		Repo:  *repo,
-	})
-	if err != nil {
-		log.Fatalf("failed to github clone: %v", err)
-	}
+	/* Step 1: make version change and push to fork */
+	// r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+	// 	Owner: *user,
+	// 	Repo:  *repo,
+	// })
+	// if err != nil {
+	// 	log.Fatalf("failed to github clone: %v", err)
+	// }
 
 	branchName := fmt.Sprintf("release_version_change_%v", *newVersion)
-	if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
-		VersionFile: "version.go",
-		NewVersion:  *newVersion,
-		BranchName:  branchName,
-	}); err != nil {
-		log.Fatalf("failed to make change: %v", err)
-	}
-
-	if err := r.Publish(&gitwrapper.PublicConfig{
-		// This could push to upstream directly, but to be safe, we send pull
-		// request instead.
-		RemoteName: "",
-		Auth: &gitwrapper.AuthConfig{
-			Username: *user,
-			Password: *token,
-		},
-	}); err != nil {
-		log.Fatalf("failed to public change: %v", err)
-	}
-
-	// var transportClient *http.Client
-	// if *token != "" {
-	// 	ctx := context.Background()
-	// 	ts := oauth2.StaticTokenSource(
-	// 		&oauth2.Token{AccessToken: *token},
-	// 	)
-	// 	transportClient = oauth2.NewClient(ctx, ts)
+	// if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
+	// 	VersionFile: "version.go",
+	// 	NewVersion:  *newVersion,
+	// 	BranchName:  branchName,
+	// }); err != nil {
+	// 	log.Fatalf("failed to make change: %v", err)
 	// }
-	// upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
+
+	// if err := r.Publish(&gitwrapper.PublicConfig{
+	// 	// This could push to upstream directly, but to be safe, we send pull
+	// 	// request instead.
+	// 	RemoteName: "",
+	// 	Auth: &gitwrapper.AuthConfig{
+	// 		Username: *user,
+	// 		Password: *token,
+	// 	},
+	// }); err != nil {
+	// 	log.Fatalf("failed to public change: %v", err)
+	// }
+
+	/* Step 2: send pull request to upstream/release_branch with the change */
+	var transportClient *http.Client
+	if *token != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: *token},
+		)
+		transportClient = oauth2.NewClient(ctx, ts)
+	}
+	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
+	prTitle := fmt.Sprintf("Change version to %v", *newVersion)
+	upstreamGithub.NewPullRequest(*user, branchName, "master", prTitle, "") // TODO: "master" should be release branch.
+
+	/* Step x: generate release note and create draft release */
 	// // Get and print the markdown release notes.
 	// markdownNote := releaseNote(upstreamGithub, ver)
 	// fmt.Println()

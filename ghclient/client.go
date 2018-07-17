@@ -92,3 +92,24 @@ func (c *Client) NewBranchFromHead(ctx context.Context, branchName string) error
 	log.Infof("new ref created: %v", newRef.String())
 	return nil
 }
+
+// NewPullRequest creates a pull request to the owner/repo pointed by this
+// Client.
+//
+// headUser:headBranch specifies where the pull request is from.
+func (c *Client) NewPullRequest(headUser, headBranch, base, title, body string) {
+	newPR := &github.NewPullRequest{
+		Title:               github.String(title),
+		Head:                github.String(headUser + ":" + headBranch),
+		Base:                github.String(base),
+		Body:                github.String(body),
+		MaintainerCanModify: github.Bool(true),
+	}
+
+	pr, _, err := c.c.PullRequests.Create(context.Background(), c.owner, c.repo, newPR)
+	if err != nil {
+		log.Info("failed to create pull request: ", err)
+		return
+	}
+	log.Infof("PR created: %s", pr.GetHTMLURL())
+}
