@@ -5,8 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync"
 
 	"github.com/blang/semver"
+	"github.com/google/go-github/github"
 	"github.com/menghanl/release-git-bot/ghclient"
 	"github.com/menghanl/release-git-bot/gitwrapper"
 	"github.com/menghanl/release-git-bot/notes"
@@ -17,21 +20,34 @@ import (
 
 var (
 	token      = flag.String("token", "", "github token")
-	newVersion = flag.String("version", "1.14.0", "the new version number, in the format of Major.Minor.Patch, e.g. 1.14.0")
+	newVersion = flag.String("version", "", "the new version number, in the format of Major.Minor.Patch, e.g. 1.14.0")
 	user       = flag.String("user", "menghanl", "the github user. Changes will be made this user's fork")
 	repo       = flag.String("repo", "grpc-go", "the repo this release is for, e.g. grpc-go")
+
+	// For specials thanks note.
+	thanks    = flag.Bool("thanks", true, "whether to include thank you note. grpc organization members are excluded")
+	urwelcome = flag.String("urwelcome", "", "list of users to exclude from thank you note, format: user1,user2")
+	verymuch  = flag.String("verymuch", "", "list of users to include in thank you note even if they are grpc org members, format: user1,user2")
 )
 
 const (
 	upstreamUser = "grpc"
 )
 
+func commaStringToSet(s string) map[string]struct{} {
+	ret := make(map[string]struct{})
+	tmp := strings.Split(s, ",")
+	for _, t := range tmp {
+		ret[t] = struct{}{}
+	}
+	return ret
+}
+
 func main() {
 	flag.Parse()
 
 	ver, err := semver.Make(*newVersion)
 	if err != nil {
-		// TODO: git rid of Fatals.
 		log.Fatalf("invalid version string %q: %v", *newVersion, err)
 	}
 	milestoneName := fmt.Sprintf("%v.%v Release", ver.Major, ver.Minor)
@@ -46,19 +62,42 @@ func main() {
 	}
 
 	c := ghclient.New(tc, upstreamUser, *repo)
-	prs := c.GetMergedPRsForMilestone(milestoneName)
-	ns := notes.GenerateNotes(upstreamUser, *repo, "v"+*newVersion, prs, notes.Filters{})
-	fmt.Printf("\n================ generated notes for %v/%v/%v ================\n\n", ns.Org, ns.Repo, ns.Version)
-	for _, section := range ns.Sections {
-		fmt.Printf("# %v\n\n", section.Name)
-		for _, entry := range section.Entries {
-			fmt.Printf(" * %v (#%v)\n", entry.Title, entry.IssueNumber)
-			if entry.SpecialThanks {
-				fmt.Printf("   - Special Thanks: @%v\n", entry.User.Login)
+	var (
+		prs          []*github.Issue
+		thanksFilter func(pr *github.Issue) bool
+	)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		prs = c.GetMergedPRsForMilestone(milestoneName)
+		wg.Done()
+	}()
+	if *thanks {
+		wg.Add(1)
+		go func() {
+			urwelcomeMap := commaStringToSet(*urwelcome)
+			verymuchMap := commaStringToSet(*verymuch)
+			grpcMembers := c.GetOrgMembers("grpc")
+			thanksFilter = func(pr *github.Issue) bool {
+				user := pr.GetUser().GetLogin()
+				_, isGRPCMember := grpcMembers[user]
+				_, isWelcome := urwelcomeMap[user]
+				_, isVerymuch := verymuchMap[user]
+				return *thanks && (isVerymuch || (!isGRPCMember && !isWelcome))
 			}
-		}
-		fmt.Println()
+			wg.Done()
+		}()
 	}
+	wg.Wait()
+
+	ns := notes.GenerateNotes(upstreamUser, *repo, "v"+*newVersion, prs, notes.Filters{
+		SpecialThanks: thanksFilter,
+	})
+
+	fmt.Printf("\n================ generated notes for %v/%v/%v ================\n\n", ns.Org, ns.Repo, ns.Version)
+	fmt.Println(ns.ToMarkdown())
 }
 
 // Function to make code version changes.

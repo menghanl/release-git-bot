@@ -2,12 +2,31 @@
 // notes.
 package notes
 
+import "fmt"
+
 // Notes contains all the note entries for a given release.
 type Notes struct {
 	Org      string     `json:"org"`
 	Repo     string     `json:"repo"`
 	Version  string     `json:"version"`
 	Sections []*Section `json:"sections"`
+}
+
+// ToMarkdown converts Notes into a markdown string that can be used in github
+// release description.
+func (ns *Notes) ToMarkdown() string {
+	var ret string
+	for _, section := range ns.Sections {
+		ret += fmt.Sprintf("# %v\n\n", section.Name)
+		for _, entry := range section.Entries {
+			ret += fmt.Sprintf(" * %v (#%v)\n", entry.Title, entry.IssueNumber)
+			if entry.SpecialThanks {
+				ret += fmt.Sprintf("   - Special Thanks: @%v\n", entry.User.Login)
+			}
+		}
+		ret += "\n"
+	}
+	return ret
 }
 
 // Section contains one release note section, for example "Feature".
