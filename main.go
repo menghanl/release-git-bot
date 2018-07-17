@@ -46,12 +46,12 @@ func main() {
 	fmt.Println(owner, repo, release)
 
 	c := ghclient.New(tc, owner, repo)
-	// prs := c.GetMergedPRsForMilestone("1.13 Release")
-	prs := c.GetMergedPRsForLabels([]string{"Cherry Pick"})
-	for i, pr := range prs {
-		fmt.Println(i, pr.GetNumber(), pr.GetTitle())
-		fmt.Println(c.CommitIDForMergedPR(pr))
-	}
+	prs := c.GetMergedPRsForMilestone("1.14 Release")
+	// prs := c.GetMergedPRsForLabels([]string{"Cherry Pick"})
+	// for i, pr := range prs {
+	// 	fmt.Println(i, pr.GetNumber(), pr.GetTitle())
+	// 	fmt.Println(c.CommitIDForMergedPR(pr))
+	// }
 	ns := notes.GenerateNotes(owner, repo, release, prs, notes.Filters{})
 	fmt.Printf("\n================ generated notes for org %q repo %q release %q ================\n\n", ns.Org, ns.Repo, ns.Version)
 	for _, section := range ns.Sections {
