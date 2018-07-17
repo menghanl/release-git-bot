@@ -63,8 +63,9 @@ func (c *Client) CommitIDForMergedPR(pr *github.Issue) string {
 // NewBranchFromHead create a new branch with the current commit from head.
 //
 // It does nothing if the branch already exists.
-func (c *Client) NewBranchFromHead(ctx context.Context, branchName string) error {
+func (c *Client) NewBranchFromHead(branchName string) error {
 	log.Infof("creating branch: %v/%v/%v", c.owner, c.repo, branchName)
+	ctx := context.Background()
 
 	refName := "heads/" + branchName
 	// Check if ref already exists.
