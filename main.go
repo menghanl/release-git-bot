@@ -88,38 +88,6 @@ func main() {
 	// fmt.Println(markdownNote)
 }
 
-// Function to make code version changes.
-// func main2() {
-// 	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
-// 		Owner: "menghanl",
-// 		Repo:  "grpc-go",
-// 	})
-// 	if err != nil {
-// 		log.Fatalf("failed to github clone: %v", err)
-// 	}
-
-// 	if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
-// 		VersionFile: "version.go",
-// 		NewVersion:  *newVersion,
-// 	}); err != nil {
-// 		log.Fatalf("failed to make change: %v", err)
-// 	}
-
-// 	if err := r.Publish(&gitwrapper.PublicConfig{
-// 		// This could push to upstream directly, but to be safe, we send pull
-// 		// request instead.
-// 		RemoteName: "",
-// 		Auth: &gitwrapper.AuthConfig{
-// 			Username: *user,
-// 			Password: *token,
-// 		},
-// 	}); err != nil {
-// 		log.Fatalf("failed to public change: %v", err)
-// 	}
-
-// 	return
-// }
-
 // This function is unused.
 // func surveyTemp() {
 // 	flag.Parse()
