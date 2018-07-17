@@ -82,7 +82,8 @@ type PublicConfig struct {
 
 // Publish pushes the local change.
 func (r *Repo) Publish(c *PublicConfig) error {
-	// FIXME: push remote
+	// This could push to upstream directly, but to be safe, we send pull
+	// request instead.
 
 	// git push -u
 	if err := r.push(c.Auth.Username, c.Auth.Password); err != nil {
