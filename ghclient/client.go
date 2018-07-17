@@ -60,29 +60,28 @@ func (c *Client) CommitIDForMergedPR(pr *github.Issue) string {
 	return c.commitIDForMergedPR(pr)
 }
 
-// NewBranchFromHead create a new branch with the current commit from head. Note
-// that owner and repo can be different from Client.
+// NewBranchFromHead create a new branch with the current commit from head.
 //
 // It does nothing if the branch already exists.
-func (c *Client) NewBranchFromHead(ctx context.Context, owner, repo, branchName string) error {
-	log.Infof("creating branch: %v/%v/%v", owner, repo, branchName)
+func (c *Client) NewBranchFromHead(ctx context.Context, branchName string) error {
+	log.Infof("creating branch: %v/%v/%v", c.owner, c.repo, branchName)
 
 	refName := "heads/" + branchName
 	// Check if ref already exists.
-	if ref, _, err := c.c.Git.GetRef(ctx, owner, repo, refName); err == nil {
+	if ref, _, err := c.c.Git.GetRef(ctx, c.owner, c.repo, refName); err == nil {
 		log.Infof("ref already exists: %v", ref)
 		return nil
 	}
 
 	// Get head SHA.
-	ref, _, err := c.c.Git.GetRef(ctx, owner, repo, "heads/master")
+	ref, _, err := c.c.Git.GetRef(ctx, c.owner, c.repo, "heads/master")
 	if err != nil {
 		return fmt.Errorf("failed to get master hash: %v", err)
 	}
 	log.Infof("hash for HEAD: %v", ref.GetObject().GetSHA())
 
 	// Create new ref.
-	newRef, _, err := c.c.Git.CreateRef(ctx, owner, repo, &github.Reference{
+	newRef, _, err := c.c.Git.CreateRef(ctx, c.owner, c.repo, &github.Reference{
 		Ref:    &refName,
 		Object: ref.GetObject(),
 	})
