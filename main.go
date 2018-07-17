@@ -5,14 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"strings"
-	"sync"
 
 	"github.com/blang/semver"
-	"github.com/google/go-github/github"
 	"github.com/menghanl/release-git-bot/ghclient"
-	"github.com/menghanl/release-git-bot/gitwrapper"
-	"github.com/menghanl/release-git-bot/notes"
 	"golang.org/x/oauth2"
 
 	log "github.com/sirupsen/logrus"
@@ -34,15 +29,6 @@ const (
 	upstreamUser = "grpc"
 )
 
-func commaStringToSet(s string) map[string]struct{} {
-	ret := make(map[string]struct{})
-	tmp := strings.Split(s, ",")
-	for _, t := range tmp {
-		ret[t] = struct{}{}
-	}
-	return ret
-}
-
 func main() {
 	flag.Parse()
 
@@ -50,87 +36,53 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid version string %q: %v", *newVersion, err)
 	}
-	milestoneName := fmt.Sprintf("%v.%v Release", ver.Major, ver.Minor)
 
-	var tc *http.Client
+	var transportClient *http.Client
 	if *token != "" {
 		ctx := context.Background()
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: *token},
 		)
-		tc = oauth2.NewClient(ctx, ts)
+		transportClient = oauth2.NewClient(ctx, ts)
 	}
+	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
 
-	c := ghclient.New(tc, upstreamUser, *repo)
-	var (
-		prs          []*github.Issue
-		thanksFilter func(pr *github.Issue) bool
-	)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		prs = c.GetMergedPRsForMilestone(milestoneName)
-		wg.Done()
-	}()
-	if *thanks {
-		wg.Add(1)
-		go func() {
-			urwelcomeMap := commaStringToSet(*urwelcome)
-			verymuchMap := commaStringToSet(*verymuch)
-			grpcMembers := c.GetOrgMembers("grpc")
-			thanksFilter = func(pr *github.Issue) bool {
-				user := pr.GetUser().GetLogin()
-				_, isGRPCMember := grpcMembers[user]
-				_, isWelcome := urwelcomeMap[user]
-				_, isVerymuch := verymuchMap[user]
-				return *thanks && (isVerymuch || (!isGRPCMember && !isWelcome))
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-
-	ns := notes.GenerateNotes(upstreamUser, *repo, "v"+*newVersion, prs, notes.Filters{
-		SpecialThanks: thanksFilter,
-	})
-
-	fmt.Printf("\n================ generated notes for %v/%v/%v ================\n\n", ns.Org, ns.Repo, ns.Version)
-	fmt.Println(ns.ToMarkdown())
+	markdownNote := releaseNote(upstreamGithub, ver)
+	fmt.Println()
+	fmt.Println(markdownNote)
 }
 
 // Function to make code version changes.
-func main2() {
-	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
-		Owner: "menghanl",
-		Repo:  "grpc-go",
-	})
-	if err != nil {
-		log.Fatalf("failed to github clone: %v", err)
-	}
+// func main2() {
+// 	r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+// 		Owner: "menghanl",
+// 		Repo:  "grpc-go",
+// 	})
+// 	if err != nil {
+// 		log.Fatalf("failed to github clone: %v", err)
+// 	}
 
-	if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
-		VersionFile: "version.go",
-		NewVersion:  *newVersion,
-	}); err != nil {
-		log.Fatalf("failed to make change: %v", err)
-	}
+// 	if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
+// 		VersionFile: "version.go",
+// 		NewVersion:  *newVersion,
+// 	}); err != nil {
+// 		log.Fatalf("failed to make change: %v", err)
+// 	}
 
-	if err := r.Publish(&gitwrapper.PublicConfig{
-		// This could push to upstream directly, but to be safe, we send pull
-		// request instead.
-		RemoteName: "",
-		Auth: &gitwrapper.AuthConfig{
-			Username: *user,
-			Password: *token,
-		},
-	}); err != nil {
-		log.Fatalf("failed to public change: %v", err)
-	}
+// 	if err := r.Publish(&gitwrapper.PublicConfig{
+// 		// This could push to upstream directly, but to be safe, we send pull
+// 		// request instead.
+// 		RemoteName: "",
+// 		Auth: &gitwrapper.AuthConfig{
+// 			Username: *user,
+// 			Password: *token,
+// 		},
+// 	}); err != nil {
+// 		log.Fatalf("failed to public change: %v", err)
+// 	}
 
-	return
-}
+// 	return
+// }
 
 // This function is unused.
 // func surveyTemp() {

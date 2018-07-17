@@ -26,6 +26,16 @@ func New(tc *http.Client, owner, repo string) *Client {
 	}
 }
 
+// Owner returns the github user name this client was build with.
+func (c *Client) Owner() string {
+	return c.owner
+}
+
+// Repo returns the github repo name this client was build with.
+func (c *Client) Repo() string {
+	return c.repo
+}
+
 // GetMergedPRsForMilestone returns a list of github issues that are merged PRs
 // for this milestone.
 func (c *Client) GetMergedPRsForMilestone(milestone string) []*github.Issue {
