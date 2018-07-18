@@ -36,6 +36,8 @@ type VersionChangeConfig struct {
 	NewVersion string
 	// BranchName is the branch where the change will be made.
 	BranchName string
+	// SkipCI controls whether travis tests will be skipped.
+	SkipCI bool
 
 	// Changes won't be pushed to remote if LocalOnly is true.
 	LocalOnly bool
@@ -57,10 +59,13 @@ func (r *Repo) MakeVersionChange(c *VersionChangeConfig) error {
 	}
 	// edit file
 	// git commit -m 'Change version to %v'
-
+	commitMsg := fmt.Sprintf("Change version to %v", c.NewVersion)
+	if c.SkipCI {
+		commitMsg += "\n\n[skip ci] Skipping Travis. Version number change only"
+	}
 	if err := r.updateFile(
 		c.VersionFile,
-		fmt.Sprintf("Change version to %v\n\n[skip ci] Changing versions only", c.NewVersion),
+		commitMsg,
 		func(w io.Writer) error {
 			return versionTemplate.Execute(w, map[string]string{"version": c.NewVersion})
 		},

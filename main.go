@@ -122,13 +122,14 @@ func main() {
 }
 
 // return value is pr URL.
-func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, upstreamReleaseBranchName string) string {
+func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, upstreamBranchName string) string {
 	/* Step 1: make version change locally and push to fork */
 	branchName := fmt.Sprintf("release_version_%v", newVersionStr)
 	if err := local.MakeVersionChange(&gitwrapper.VersionChangeConfig{
 		VersionFile: "version.go",
 		NewVersion:  newVersionStr,
 		BranchName:  branchName,
+		SkipCI:      upstreamBranchName != "master", // Not skip if upstreamBranchName is "master"
 	}); err != nil {
 		log.Fatalf("failed to make change: %v", err)
 	}
@@ -147,7 +148,7 @@ func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, up
 
 	/* Step 2: send pull request to upstream/release_branch with the change */
 	prTitle := fmt.Sprintf("Change version to %v", newVersionStr)
-	prURL, err := upstream.NewPullRequest(*user, branchName, upstreamReleaseBranchName, prTitle, "")
+	prURL, err := upstream.NewPullRequest(*user, branchName, upstreamBranchName, prTitle, "")
 	if err != nil {
 		log.Fatalf("failed to create pull request: ", err)
 	}
