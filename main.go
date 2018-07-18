@@ -15,6 +15,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Only log the warning severity or above.
+	log.SetLevel(log.WarnLevel)
+}
+
 var (
 	token      = flag.String("token", "", "github token")
 	newVersion = flag.String("version", "", "the new version number, in the format of Major.Minor.Patch, e.g. 1.14.0")
@@ -57,6 +62,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to github clone: %v", err)
 	}
+
+	// TODO: more logging to show progress.
 
 	/* Step 1: create an upstream release branch if it doesn't exist */
 	upstreamReleaseBranchName := fmt.Sprintf("v%v.%v.x", ver.Major, ver.Minor)
