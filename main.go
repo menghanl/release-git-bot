@@ -8,7 +8,9 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/menghanl/release-git-bot/ghclient"
+	"github.com/menghanl/release-git-bot/gitwrapper"
 	"golang.org/x/oauth2"
+	survey "gopkg.in/AlecAivazis/survey.v1"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -38,37 +40,6 @@ func main() {
 	}
 	log.Info("version is valid: ", ver.String())
 
-	/* Step 1: make version change and push to fork */
-	// r, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
-	// 	Owner: *user,
-	// 	Repo:  *repo,
-	// })
-	// if err != nil {
-	// 	log.Fatalf("failed to github clone: %v", err)
-	// }
-
-	branchName := fmt.Sprintf("release_version_change_%v", *newVersion)
-	// if err := r.MakeVersionChange(&gitwrapper.VersionChangeConfig{
-	// 	VersionFile: "version.go",
-	// 	NewVersion:  *newVersion,
-	// 	BranchName:  branchName,
-	// }); err != nil {
-	// 	log.Fatalf("failed to make change: %v", err)
-	// }
-
-	// if err := r.Publish(&gitwrapper.PublicConfig{
-	// 	// This could push to upstream directly, but to be safe, we send pull
-	// 	// request instead.
-	// 	RemoteName: "",
-	// 	Auth: &gitwrapper.AuthConfig{
-	// 		Username: *user,
-	// 		Password: *token,
-	// 	},
-	// }); err != nil {
-	// 	log.Fatalf("failed to public change: %v", err)
-	// }
-
-	/* Step 2: send pull request to upstream/release_branch with the change */
 	var transportClient *http.Client
 	if *token != "" {
 		ctx := context.Background()
@@ -78,14 +49,68 @@ func main() {
 		transportClient = oauth2.NewClient(ctx, ts)
 	}
 	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
-	prTitle := fmt.Sprintf("Change version to %v", *newVersion)
-	upstreamGithub.NewPullRequest(*user, branchName, "master", prTitle, "") // TODO: "master" should be release branch.
+
+	forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+		Owner: *user,
+		Repo:  *repo,
+	})
+	if err != nil {
+		log.Fatalf("failed to github clone: %v", err)
+	}
+
+	/* Step 1: create an upstream release branch if it doesn't exist */
+	upstreamReleaseBranchName := fmt.Sprintf("v%v.%v.x", ver.Major, ver.Minor)
+	upstreamGithub.NewBranchFromHead(upstreamReleaseBranchName)
+
+	/* Step 2: send PR to release branch to change version file to 1.release.0 */
+	prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
+
+	prMergeConfirmed := false
+	for !prMergeConfirmed {
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("PR %v created, merge before continuing. Merged?", prURL1),
+		}
+		survey.AskOne(prompt, &prMergeConfirmed, nil)
+		fmt.Println(prMergeConfirmed)
+	}
 
 	/* Step x: generate release note and create draft release */
 	// // Get and print the markdown release notes.
 	// markdownNote := releaseNote(upstreamGithub, ver)
 	// fmt.Println()
 	// fmt.Println(markdownNote)
+}
+
+func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, upstreamReleaseBranchName string) string {
+	/* Step 1: make version change locally and push to fork */
+	branchName := fmt.Sprintf("release_version_%v", newVersionStr)
+	if err := local.MakeVersionChange(&gitwrapper.VersionChangeConfig{
+		VersionFile: "version.go",
+		NewVersion:  newVersionStr,
+		BranchName:  branchName,
+	}); err != nil {
+		log.Fatalf("failed to make change: %v", err)
+	}
+
+	if err := local.Publish(&gitwrapper.PublicConfig{
+		// This could push to upstream directly, but to be safe, we send pull
+		// request instead.
+		RemoteName: "",
+		Auth: &gitwrapper.AuthConfig{
+			Username: *user,
+			Password: *token,
+		},
+	}); err != nil {
+		log.Fatalf("failed to public change: %v", err)
+	}
+
+	/* Step 2: send pull request to upstream/release_branch with the change */
+	prTitle := fmt.Sprintf("Change version to %v", newVersionStr)
+	prURL, err := upstream.NewPullRequest(*user, branchName, upstreamReleaseBranchName, prTitle, "")
+	if err != nil {
+		log.Fatalf("failed to create pull request: ", err)
+	}
+	return prURL
 }
 
 // This function is unused.

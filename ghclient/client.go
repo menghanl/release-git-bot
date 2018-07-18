@@ -98,7 +98,7 @@ func (c *Client) NewBranchFromHead(branchName string) error {
 // Client.
 //
 // headUser:headBranch specifies where the pull request is from.
-func (c *Client) NewPullRequest(headUser, headBranch, base, title, body string) {
+func (c *Client) NewPullRequest(headUser, headBranch, base, title, body string) (string, error) {
 	newPR := &github.NewPullRequest{
 		Title:               github.String(title),
 		Head:                github.String(headUser + ":" + headBranch),
@@ -109,8 +109,8 @@ func (c *Client) NewPullRequest(headUser, headBranch, base, title, body string) 
 
 	pr, _, err := c.c.PullRequests.Create(context.Background(), c.owner, c.repo, newPR)
 	if err != nil {
-		log.Info("failed to create pull request: ", err)
-		return
+		return "", err
 	}
 	log.Infof("PR created: %s", pr.GetHTMLURL())
+	return pr.GetHTMLURL(), nil
 }
