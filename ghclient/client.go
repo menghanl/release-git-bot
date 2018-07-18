@@ -114,3 +114,19 @@ func (c *Client) NewPullRequest(headUser, headBranch, base, title, body string) 
 	log.Infof("PR created: %s", pr.GetHTMLURL())
 	return pr.GetHTMLURL(), nil
 }
+
+// NewDraftRelease creates a draft release.
+func (c *Client) NewDraftRelease(tagName, targetBranch, title, body string) (string, error) {
+	newRelease := &github.RepositoryRelease{
+		TagName:         github.String(tagName),
+		TargetCommitish: github.String(targetBranch),
+		Name:            github.String(title),
+		Body:            github.String(body),
+		Draft:           github.Bool(true),
+	}
+	release, _, err := c.c.Repositories.CreateRelease(context.Background(), c.owner, c.repo, newRelease)
+	if err != nil {
+		return "", err
+	}
+	return release.GetHTMLURL(), nil
+}

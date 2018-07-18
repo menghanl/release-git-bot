@@ -55,39 +55,57 @@ func main() {
 	}
 	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
 
-	forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
-		Owner: *user,
-		Repo:  *repo,
-	})
-	if err != nil {
-		log.Fatalf("failed to github clone: %v", err)
-	}
+	// forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+	// 	Owner: *user,
+	// 	Repo:  *repo,
+	// })
+	// if err != nil {
+	// 	log.Fatalf("failed to github clone: %v", err)
+	// }
 
-	// TODO: more logging to show progress.
+	// // TODO: more logging to show progress.
 
-	/* Step 1: create an upstream release branch if it doesn't exist */
+	// /* Step 1: create an upstream release branch if it doesn't exist */
 	upstreamReleaseBranchName := fmt.Sprintf("v%v.%v.x", ver.Major, ver.Minor)
-	upstreamGithub.NewBranchFromHead(upstreamReleaseBranchName)
+	// upstreamGithub.NewBranchFromHead(upstreamReleaseBranchName)
 
-	/* Step 2: send PR to release branch to change version file to 1.release.0 */
-	prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
+	// /* Step 2: send PR to release branch to change version file to 1.release.0 */
+	// prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
 
-	prMergeConfirmed := false
-	for !prMergeConfirmed {
-		prompt := &survey.Confirm{
-			Message: fmt.Sprintf("PR %v created, merge before continuing. Merged?", prURL1),
-		}
-		survey.AskOne(prompt, &prMergeConfirmed, nil)
-		fmt.Println(prMergeConfirmed)
+	// /* Wait for the PR to be merged */
+	// prMergeConfirmed := false
+	// for !prMergeConfirmed {
+	// 	prompt := &survey.Confirm{
+	// 		Message: fmt.Sprintf("PR %v created, merge before continuing. Merged?", prURL1),
+	// 	}
+	// 	survey.AskOne(prompt, &prMergeConfirmed, nil)
+	// 	fmt.Println(prMergeConfirmed)
+	// }
+
+	/* Step 3: generate release note and create draft release */
+	// Get and print the markdown release notes.
+	markdownNote := releaseNote(upstreamGithub, ver)
+	fmt.Println()
+	fmt.Println(markdownNote)
+
+	releaseTitle := fmt.Sprintf("Release %v", *newVersion)
+	releaseURL, err := upstreamGithub.NewDraftRelease("v"+*newVersion, upstreamReleaseBranchName, releaseTitle, markdownNote)
+	if err != nil {
+		log.Fatal("failed to create release: ", err)
 	}
 
-	/* Step x: generate release note and create draft release */
-	// // Get and print the markdown release notes.
-	// markdownNote := releaseNote(upstreamGithub, ver)
-	// fmt.Println()
-	// fmt.Println(markdownNote)
+	/* Wait for the release to be published */
+	releasePublishConfirmed := false
+	for !releasePublishConfirmed {
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("Draft release %v created, publish before continuing. Published?", releaseURL),
+		}
+		survey.AskOne(prompt, &releasePublishConfirmed, nil)
+		fmt.Println(releasePublishConfirmed)
+	}
 }
 
+// return value is pr URL.
 func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, upstreamReleaseBranchName string) string {
 	/* Step 1: make version change locally and push to fork */
 	branchName := fmt.Sprintf("release_version_%v", newVersionStr)
