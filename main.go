@@ -55,32 +55,32 @@ func main() {
 	}
 	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
 
-	// forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
-	// 	Owner: *user,
-	// 	Repo:  *repo,
-	// })
-	// if err != nil {
-	// 	log.Fatalf("failed to github clone: %v", err)
-	// }
+	forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
+		Owner: *user,
+		Repo:  *repo,
+	})
+	if err != nil {
+		log.Fatalf("failed to github clone: %v", err)
+	}
 
-	// // TODO: more logging to show progress.
+	// TODO: more logging to show progress.
 
-	// /* Step 1: create an upstream release branch if it doesn't exist */
+	/* Step 1: create an upstream release branch if it doesn't exist */
 	upstreamReleaseBranchName := fmt.Sprintf("v%v.%v.x", ver.Major, ver.Minor)
-	// upstreamGithub.NewBranchFromHead(upstreamReleaseBranchName)
+	upstreamGithub.NewBranchFromHead(upstreamReleaseBranchName)
 
-	// /* Step 2: send PR to release branch to change version file to 1.release.0 */
-	// prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
+	/* Step 2: on release branch, change version file to 1.release.0 */
+	prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
 
-	// /* Wait for the PR to be merged */
-	// prMergeConfirmed := false
-	// for !prMergeConfirmed {
-	// 	prompt := &survey.Confirm{
-	// 		Message: fmt.Sprintf("PR %v created, merge before continuing. Merged?", prURL1),
-	// 	}
-	// 	survey.AskOne(prompt, &prMergeConfirmed, nil)
-	// 	fmt.Println(prMergeConfirmed)
-	// }
+	/* Wait for the PR to be merged */
+	prMergeConfirmed := false
+	for !prMergeConfirmed {
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("PR %v created, merge before continuing. Merged?", prURL1),
+		}
+		survey.AskOne(prompt, &prMergeConfirmed, nil)
+		fmt.Println(prMergeConfirmed)
+	}
 
 	/* Step 3: generate release note and create draft release */
 	// Get and print the markdown release notes.
@@ -103,6 +103,22 @@ func main() {
 		survey.AskOne(prompt, &releasePublishConfirmed, nil)
 		fmt.Println(releasePublishConfirmed)
 	}
+
+	/* Step 4: on release branch, change version file to 1.release.1-dev */
+	nextMinorRelease := ver
+	nextMinorRelease.Patch++ // Increment the pateh version, not the minor version.
+	nextMinorReleaseStr := fmt.Sprintf("%v-dev", nextMinorRelease.String())
+	prURL2 := makePR(upstreamGithub, forkLocalGit, nextMinorReleaseStr, upstreamReleaseBranchName)
+	fmt.Println("merge PR: ", prURL2)
+
+	/* Step 5: on master branch, change version file to 1.release+1.0-dev */
+	nextMajorRelease := ver
+	nextMajorRelease.Minor++ // Increment the minor version, not the major version.
+	nextMajorReleaseStr := fmt.Sprintf("%v-dev", nextMajorRelease.String())
+	prURL3 := makePR(upstreamGithub, forkLocalGit, nextMajorReleaseStr, "master")
+	fmt.Println("merge PR: ", prURL3)
+
+	/* Step 6: finish steps as in g3doc */
 }
 
 // return value is pr URL.
