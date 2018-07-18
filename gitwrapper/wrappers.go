@@ -43,6 +43,10 @@ type VersionChangeConfig struct {
 
 // MakeVersionChange makes the version change in repo.
 func (r *Repo) MakeVersionChange(c *VersionChangeConfig) error {
+	// git checkout master, all changes should be based on master.
+	if err := r.checkoutBranch("master"); err != nil {
+		return err
+	}
 	// git checkout -b release_version_1.14.0
 	if err := r.checkoutBranch(c.BranchName); err != nil {
 		return err
