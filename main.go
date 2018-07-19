@@ -32,14 +32,20 @@ var (
 	thanks    = flag.Bool("thanks", true, "whether to include thank you note. grpc organization members are excluded")
 	urwelcome = flag.String("urwelcome", "", "list of users to exclude from thank you note, format: user1,user2")
 	verymuch  = flag.String("verymuch", "", "list of users to include in thank you note even if they are grpc org members, format: user1,user2")
+
+	nokidding = flag.Bool("nokidding", false, "if no kidding, do real release")
 )
 
-const (
-	upstreamUser = "menghanl" // TODO: change this back!!! "grpc"
+var (
+	upstreamUser = "menghanl" // TODO: change this back to "grpc" by default.
 )
 
 func main() {
 	flag.Parse()
+
+	if *nokidding {
+		upstreamUser = "grpc"
+	}
 
 	ver, err := semver.Make(*newVersion)
 	if err != nil {
