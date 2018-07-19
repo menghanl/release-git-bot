@@ -58,7 +58,15 @@ func main() {
 	inputTable.Append([]string{"user", *user})
 	inputTable.Append([]string{"repo", *repo})
 	inputTable.Append([]string{"version", *newVersion})
+	inputTable.Append([]string{"upstreamRepo", upstreamUser + "/" + *repo})
 	inputTable.Render()
+
+	lgty := false
+	survey.AskOne(&survey.Confirm{Message: "Looks right?"}, &lgty, nil)
+	if !lgty {
+		fmt.Printf("Existing")
+		return
+	}
 
 	var transportClient *http.Client
 	if *token != "" {
