@@ -1,10 +1,9 @@
 package notes
 
 import (
-	"fmt"
-
 	"github.com/fatih/color"
 	"github.com/google/go-github/github"
+	log "github.com/sirupsen/logrus"
 )
 
 // Filters contains filters to be applied on input PRs.
@@ -36,9 +35,9 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 		if !ok {
 			continue // If ok==false, ignore this PR in the release note.
 		}
-		fmt.Printf(" [%v] - ", color.BlueString("%v", pr.GetNumber()))
-		fmt.Print(color.GreenString("%-18q", label))
-		fmt.Printf(" from: %v\n", labelsToString(pr.Labels))
+		log.Infof(" [%v] - ", color.BlueString("%v", pr.GetNumber()))
+		log.Info(color.GreenString("%-18q", label))
+		log.Info(" from: %v\n", labelsToString(pr.Labels))
 
 		section, ok := sectionsMap[label]
 		if !ok {

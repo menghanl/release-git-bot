@@ -5,10 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/blang/semver"
 	"github.com/menghanl/release-git-bot/ghclient"
 	"github.com/menghanl/release-git-bot/gitwrapper"
+	"github.com/olekukonko/tablewriter"
 	"golang.org/x/oauth2"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 
@@ -45,6 +47,13 @@ func main() {
 	}
 	log.Info("version is valid: ", ver.String())
 
+	inputTable := tablewriter.NewWriter(os.Stdout)
+	inputTable.SetHeader([]string{"input"})
+	inputTable.Append([]string{"user", *user})
+	inputTable.Append([]string{"repo", *repo})
+	inputTable.Append([]string{"version", *newVersion})
+	inputTable.Render()
+
 	var transportClient *http.Client
 	if *token != "" {
 		ctx := context.Background()
@@ -55,6 +64,7 @@ func main() {
 	}
 	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
 
+	fmt.Printf("Cloning %v/%v into memory\n", *user, *repo)
 	forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
 		Owner: *user,
 		Repo:  *repo,
@@ -63,60 +73,62 @@ func main() {
 		log.Fatalf("failed to github clone: %v", err)
 	}
 
-	// TODO: more logging to show progress.
-
 	/* Step 1: create an upstream release branch if it doesn't exist */
 	upstreamReleaseBranchName := fmt.Sprintf("v%v.%v.x", ver.Major, ver.Minor)
+	fmt.Printf(" - Step 1: create an upstream release branch %v/%v/%v\n", upstreamUser, *repo, upstreamReleaseBranchName)
 	upstreamGithub.NewBranchFromHead(upstreamReleaseBranchName)
 
 	/* Step 2: on release branch, change version file to 1.release.0 */
+	fmt.Printf(" - Step 2: on release branch, change version to %v\n", *newVersion)
 	prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
+	fmt.Printf("PR %v created, merge before continuing...\n", prURL1)
 
 	/* Wait for the PR to be merged */
 	prMergeConfirmed := false
 	for !prMergeConfirmed {
 		prompt := &survey.Confirm{
-			Message: fmt.Sprintf("PR %v created, merge before continuing. Merged?", prURL1),
+			Message: "Merged?",
 		}
 		survey.AskOne(prompt, &prMergeConfirmed, nil)
-		fmt.Println(prMergeConfirmed)
 	}
 
 	/* Step 3: generate release note and create draft release */
+	fmt.Printf(" - Step 3: generate release note and creating draft release\n")
 	// Get and print the markdown release notes.
 	markdownNote := releaseNote(upstreamGithub, ver)
-	fmt.Println()
-	fmt.Println(markdownNote)
+	// fmt.Println(markdownNote)
 
 	releaseTitle := fmt.Sprintf("Release %v", *newVersion)
 	releaseURL, err := upstreamGithub.NewDraftRelease("v"+*newVersion, upstreamReleaseBranchName, releaseTitle, markdownNote)
 	if err != nil {
 		log.Fatal("failed to create release: ", err)
 	}
+	fmt.Printf("Draft release %v created, publish before continuing\n", releaseURL)
 
 	/* Wait for the release to be published */
 	releasePublishConfirmed := false
 	for !releasePublishConfirmed {
 		prompt := &survey.Confirm{
-			Message: fmt.Sprintf("Draft release %v created, publish before continuing. Published?", releaseURL),
+			Message: "Published?",
 		}
 		survey.AskOne(prompt, &releasePublishConfirmed, nil)
-		fmt.Println(releasePublishConfirmed)
 	}
 
 	/* Step 4: on release branch, change version file to 1.release.1-dev */
 	nextMinorRelease := ver
 	nextMinorRelease.Patch++ // Increment the pateh version, not the minor version.
 	nextMinorReleaseStr := fmt.Sprintf("%v-dev", nextMinorRelease.String())
+	fmt.Printf(" - Step 4: on release branch, change version to %v\n", nextMinorReleaseStr)
 	prURL2 := makePR(upstreamGithub, forkLocalGit, nextMinorReleaseStr, upstreamReleaseBranchName)
-	fmt.Println("merge PR: ", prURL2)
+	fmt.Println("PR to merge: ", prURL2)
 
 	/* Step 5: on master branch, change version file to 1.release+1.0-dev */
 	nextMajorRelease := ver
 	nextMajorRelease.Minor++ // Increment the minor version, not the major version.
 	nextMajorReleaseStr := fmt.Sprintf("%v-dev", nextMajorRelease.String())
+	fmt.Printf(" - Step 5: on master branch, change version to %v\n", nextMajorReleaseStr)
 	prURL3 := makePR(upstreamGithub, forkLocalGit, nextMajorReleaseStr, "master")
-	fmt.Println("merge PR: ", prURL3)
+	fmt.Println("PR to merge: ", prURL3)
 
 	/* Step 6: finish steps as in g3doc */
 }
