@@ -39,6 +39,11 @@ type VersionChangeConfig struct {
 	// SkipCI controls whether travis tests will be skipped.
 	SkipCI bool
 
+	// The user name for the commit.
+	UserName string
+	// The email address for the commit.
+	UserEmail string
+
 	// Changes won't be pushed to remote if LocalOnly is true.
 	LocalOnly bool
 }
@@ -66,6 +71,8 @@ func (r *Repo) MakeVersionChange(c *VersionChangeConfig) error {
 	if err := r.updateFile(
 		c.VersionFile,
 		commitMsg,
+		c.UserName,
+		c.UserEmail,
 		func(w io.Writer) error {
 			return versionTemplate.Execute(w, map[string]string{"version": c.NewVersion})
 		},

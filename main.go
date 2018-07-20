@@ -164,6 +164,8 @@ func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, up
 		VersionFile: "version.go",
 		NewVersion:  newVersionStr,
 		BranchName:  branchName,
+		UserName:    "release bot", // TODO: change this!!!
+		UserEmail:   "bot@grpc.io",
 		SkipCI:      upstreamBranchName != "master", // Not skip if upstreamBranchName is "master"
 	}); err != nil {
 		log.Fatalf("failed to make change: %v", err)

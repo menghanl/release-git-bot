@@ -108,7 +108,7 @@ func (r *Repo) checkoutBranch(name string) error {
 	return nil
 }
 
-func (r *Repo) updateFile(filepath, commitMsg string, write func(io.Writer) error) error {
+func (r *Repo) updateFile(filepath, commitMsg, userName, userEmail string, write func(io.Writer) error) error {
 	log.Infof("executing %q", "edit "+filepath)
 	fileT, err := r.fs.OpenFile(filepath, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -131,9 +131,8 @@ func (r *Repo) updateFile(filepath, commitMsg string, write func(io.Writer) erro
 	log.Infof("executing %q", "git commit -m '"+commitMsg+"'")
 	if _, err := r.worktree.Commit(commitMsg, &git.CommitOptions{
 		Author: &object.Signature{
-			// TODO: change name and email here.
-			Name:  "release bot",
-			Email: "releasebot@grpc.io",
+			Name:  userName,
+			Email: userEmail,
 			When:  time.Now(),
 		},
 	}); err != nil {
