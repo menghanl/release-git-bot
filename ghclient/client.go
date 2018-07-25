@@ -130,3 +130,22 @@ func (c *Client) NewDraftRelease(tagName, targetBranch, title, body string) (str
 	}
 	return release.GetHTMLURL(), nil
 }
+
+// GetPrimaryEmail returns the primary email of the token owner.
+func (c *Client) GetPrimaryEmail() (string, error) {
+	emails, _, err := c.c.Users.ListEmails(context.Background(), nil)
+	if err != nil {
+		return "", err
+	}
+	if len(emails) <= 0 {
+		return "", fmt.Errorf("no email address found")
+	}
+	var e *github.UserEmail
+	for _, e = range emails {
+		if e.GetPrimary() {
+			return e.GetEmail(), nil
+		}
+	}
+	log.Warning("No primary email found, returning a random one")
+	return e.GetEmail(), nil
+}

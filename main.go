@@ -28,6 +28,8 @@ var (
 	user       = flag.String("user", "menghanl", "the github user. Changes will be made this user's fork")
 	repo       = flag.String("repo", "grpc-go", "the repo this release is for, e.g. grpc-go")
 
+	email = flag.String("email", "", "the email address for the commit author. If not specified, will be github primary email")
+
 	// For specials thanks note.
 	thanks    = flag.Bool("thanks", true, "whether to include thank you note. grpc organization members are excluded")
 	urwelcome = flag.String("urwelcome", "", "list of users to exclude from thank you note, format: user1,user2")
@@ -53,9 +55,27 @@ func main() {
 	}
 	log.Info("version is valid: ", ver.String())
 
+	var transportClient *http.Client
+	if *token != "" {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: *token},
+		)
+		transportClient = oauth2.NewClient(ctx, ts)
+	}
+	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
+	emailAddress := *email
+	if emailAddress == "" {
+		emailAddress, err = upstreamGithub.GetPrimaryEmail()
+		if err != nil {
+			log.Fatalf("Email was not specified, and failed to get primary email address from github: %v. Does your token have permission to read email?", err)
+		}
+	}
+
 	inputTable := tablewriter.NewWriter(os.Stdout)
 	inputTable.SetHeader([]string{"input"})
 	inputTable.Append([]string{"user", *user})
+	inputTable.Append([]string{"email", emailAddress})
 	inputTable.Append([]string{"repo", *repo})
 	inputTable.Append([]string{"version", *newVersion})
 	inputTable.Append([]string{"upstreamRepo", upstreamUser + "/" + *repo})
@@ -67,16 +87,6 @@ func main() {
 		fmt.Printf("Existing")
 		return
 	}
-
-	var transportClient *http.Client
-	if *token != "" {
-		ctx := context.Background()
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: *token},
-		)
-		transportClient = oauth2.NewClient(ctx, ts)
-	}
-	upstreamGithub := ghclient.New(transportClient, upstreamUser, *repo)
 
 	fmt.Printf(" - Cloning %v/%v into memory\n\n", *user, *repo)
 	forkLocalGit, err := gitwrapper.GithubClone(&gitwrapper.GithubCloneConfig{
@@ -96,7 +106,7 @@ func main() {
 	fmt.Println()
 	/* Step 2: on release branch, change version file to 1.release.0 */
 	fmt.Printf(" - Step 2: on release branch, change version to %v\n\n", *newVersion)
-	prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName)
+	prURL1 := makePR(upstreamGithub, forkLocalGit, *newVersion, upstreamReleaseBranchName, *user, emailAddress)
 	// prURL1 := "https://github.com/menghanl/grpc-go/pull/17"
 	fmt.Printf("PR %v created, merge before continuing...\n", prURL1)
 
@@ -140,7 +150,7 @@ func main() {
 	nextMinorReleaseStr := fmt.Sprintf("%v-dev", nextMinorRelease.String())
 	fmt.Printf(" - Step 4: on release branch, change version to %v\n\n", nextMinorReleaseStr)
 	// prURL2 := "https://github.com/menghanl/grpc-go/pull/18"
-	prURL2 := makePR(upstreamGithub, forkLocalGit, nextMinorReleaseStr, upstreamReleaseBranchName)
+	prURL2 := makePR(upstreamGithub, forkLocalGit, nextMinorReleaseStr, upstreamReleaseBranchName, *user, emailAddress)
 	fmt.Println("PR to merge: ", prURL2)
 
 	fmt.Println()
@@ -150,22 +160,22 @@ func main() {
 	nextMajorReleaseStr := fmt.Sprintf("%v-dev", nextMajorRelease.String())
 	fmt.Printf(" - Step 5: on master branch, change version to %v\n\n", nextMajorReleaseStr)
 	// prURL3 := "https://github.com/menghanl/grpc-go/pull/19"
-	prURL3 := makePR(upstreamGithub, forkLocalGit, nextMajorReleaseStr, "master")
+	prURL3 := makePR(upstreamGithub, forkLocalGit, nextMajorReleaseStr, "master", *user, emailAddress)
 	fmt.Println("PR to merge: ", prURL3)
 
 	/* Step 6: finish steps as in g3doc */
 }
 
 // return value is pr URL.
-func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, upstreamBranchName string) string {
+func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, upstreamBranchName string, name, email string) string {
 	/* Step 1: make version change locally and push to fork */
 	branchName := fmt.Sprintf("release_version_%v", newVersionStr)
 	if err := local.MakeVersionChange(&gitwrapper.VersionChangeConfig{
 		VersionFile: "version.go",
 		NewVersion:  newVersionStr,
 		BranchName:  branchName,
-		UserName:    "release bot", // TODO: change this!!!
-		UserEmail:   "bot@grpc.io",
+		UserName:    name,
+		UserEmail:   email,
 		SkipCI:      upstreamBranchName != "master", // Not skip if upstreamBranchName is "master"
 	}); err != nil {
 		log.Fatalf("failed to make change: %v", err)
