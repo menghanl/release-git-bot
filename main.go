@@ -25,7 +25,7 @@ func init() {
 var (
 	token      = flag.String("token", "", "github token")
 	newVersion = flag.String("version", "", "the new version number, in the format of Major.Minor.Patch, e.g. 1.14.0")
-	user       = flag.String("user", "", "the github user. Changes will be made this user's fork")
+	user       = flag.String("user", "", "the github user. Changes will be made to this user's fork")
 	repo       = flag.String("repo", "grpc-go", "the repo this release is for, e.g. grpc-go")
 
 	email = flag.String("email", "", "the email address for the commit author. If not specified, will be github primary email")
@@ -35,7 +35,7 @@ var (
 	urwelcome = flag.String("urwelcome", "", "list of users to exclude from thank you note, format: user1,user2")
 	verymuch  = flag.String("verymuch", "", "list of users to include in thank you note even if they are grpc org members, format: user1,user2")
 
-	nokidding = flag.Bool("nokidding", false, "if no kidding, do real release")
+	nokidding = flag.Bool("nokidding", false, "if no kidding, do real release. Eitherwise, do test in menghanl's fork")
 )
 
 var (
