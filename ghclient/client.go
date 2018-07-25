@@ -149,3 +149,13 @@ func (c *Client) GetPrimaryEmail() (string, error) {
 	log.Warning("No primary email found, returning a random one")
 	return e.GetEmail(), nil
 }
+
+// GetLogin returns the username of the token owner.
+func (c *Client) GetLogin() (string, error) {
+	// Passing the empty string will fetch the authenticated user.
+	user, _, err := c.c.Users.Get(context.Background(), "")
+	if err != nil {
+		return "", err
+	}
+	return user.GetLogin(), nil
+}
