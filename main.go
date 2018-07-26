@@ -171,6 +171,8 @@ func main() {
 	fmt.Println("PR to merge: ", prURL3)
 
 	/* Step 6: finish steps as in g3doc */
+	fmt.Println()
+	fmt.Println("Not done yet. Send the emails and add compatibility test.")
 }
 
 // return value is pr URL.
