@@ -25,10 +25,10 @@ func init() {
 var (
 	token      = flag.String("token", "", "github token")
 	newVersion = flag.String("version", "", "the new version number, in the format of Major.Minor.Patch, e.g. 1.14.0")
-	user       = flag.String("user", "", "the github user. Changes will be made to this user's fork")
+	user       = flag.String("user", "", "the github user. Changes will be made to this user's fork. If not specified, will be github username for the given token")
 	repo       = flag.String("repo", "grpc-go", "the repo this release is for, e.g. grpc-go")
 
-	email = flag.String("email", "", "the email address for the commit author. If not specified, will be github primary email")
+	email = flag.String("email", "", "the email address for the commit author. If not specified, will be github primary email for the given token")
 
 	// For specials thanks note.
 	thanks    = flag.Bool("thanks", true, "whether to include thank you note. grpc organization members are excluded")

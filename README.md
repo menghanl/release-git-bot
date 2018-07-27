@@ -1,7 +1,7 @@
 ### Preparation
 
 1. Create a [github token](https://github.com/settings/tokens) with `repo`, `read:org` and `user:email` permissions.
-1. Make sure your fork's master is __up-to-date__ with upstream/master.
+1. Make sure your fork's master is __up-to-date__ with `upstream:master`.
 
 ### Install or update the tool:
 
