@@ -1,3 +1,7 @@
+See page: https://menghanl.github.io/release-git-bot/
+
+---
+
 ### Preparation
 
 1. Check the release note and make sure it includes the release PRs, the whole release PRs and nothing but the release PRs.
