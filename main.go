@@ -206,7 +206,7 @@ func makePR(upstream *ghclient.Client, local *gitwrapper.Repo, newVersionStr, up
 	prTitle := fmt.Sprintf("Change version to %v", newVersionStr)
 	prURL, err := upstream.NewPullRequest(login, branchName, upstreamBranchName, prTitle, "")
 	if err != nil {
-		log.Fatalf("failed to create pull request: ", err)
+		log.Fatalf("failed to create pull request: %v", err)
 	}
 	return prURL
 }

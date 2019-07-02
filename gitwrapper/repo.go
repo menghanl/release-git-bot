@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/cache"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing/transport/http"
 
@@ -37,10 +38,7 @@ func cloneRepo(url string) (*Repo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to chroot(.git): %v", err)
 	}
-	s, err := filesystem.NewStorage(gitdir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create storage: %v", err)
-	}
+	s := filesystem.NewStorage(gitdir, cache.NewObjectLRUDefault())
 	r, err := git.Clone(s, fs, &git.CloneOptions{
 		URL: url,
 		// Only fetch master branch.
