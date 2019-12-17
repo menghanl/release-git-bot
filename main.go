@@ -91,7 +91,7 @@ func main() {
 	lgty := false
 	survey.AskOne(&survey.Confirm{Message: "Looks right?"}, &lgty, nil)
 	if !lgty {
-		fmt.Printf("Existing")
+		fmt.Printf("Exiting")
 		return
 	}
 
