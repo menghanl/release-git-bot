@@ -32,6 +32,9 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 		if filters.Ignore != nil && filters.Ignore(pr) {
 			continue
 		}
+		if shouldIgnore(pr) {
+			continue
+		}
 
 		label := pickMostWeightedLabel(pr.Labels)
 		_, ok := labelToSectionName[label]
@@ -95,4 +98,16 @@ func getReleaseTitle(pr *github.Issue) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(n, "- "), "* ")), true
+}
+
+const noReleaseNotesLabel = "no release notes"
+
+// Return true if labels contain "no release notes".
+func shouldIgnore(pr *github.Issue) bool {
+	for _, l := range pr.Labels {
+		if l.GetName() == noReleaseNotesLabel {
+			return true
+		}
+	}
+	return false
 }
