@@ -1,6 +1,9 @@
 package notes
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/google/go-github/github"
 	log "github.com/sirupsen/logrus"
@@ -29,6 +32,9 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 		if filters.Ignore != nil && filters.Ignore(pr) {
 			continue
 		}
+		if shouldIgnore(pr) {
+			continue
+		}
 
 		label := pickMostWeightedLabel(pr.Labels)
 		_, ok := labelToSectionName[label]
@@ -37,7 +43,7 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 		}
 		log.Infof(" [%v] - ", color.BlueString("%v", pr.GetNumber()))
 		log.Info(color.GreenString("%-18q", label))
-		log.Info(" from: %v\n", labelsToString(pr.Labels))
+		log.Infof(" from: %v\n", labelsToString(pr.Labels))
 
 		section, ok := sectionsMap[label]
 		if !ok {
@@ -50,10 +56,15 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 		user := pr.GetUser()
 		milestone := pr.GetMilestone()
 
+		title, ok := getReleaseTitle(pr)
+		if !ok {
+			continue
+		}
+
 		entry := &Entry{
 			// head: fmt.Sprintf("%v (#%d)", pr.GetTitle(), pr.GetNumber()),
 			IssueNumber: pr.GetNumber(),
-			Title:       pr.GetTitle(),
+			Title:       title,
 			HTMLURL:     pr.GetHTMLURL(),
 
 			User: &User{
@@ -72,4 +83,31 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 	}
 	notes.Sections = sortSections(notes.Sections)
 	return &notes
+}
+
+var releaseNotesRegex = regexp.MustCompile(`(?s)^RELEASE NOTES:\s*(.*)`)
+
+func getReleaseTitle(pr *github.Issue) (string, bool) {
+	f := releaseNotesRegex.FindStringSubmatch(*pr.Body)
+	if len(f) < 2 {
+		log.Info("no release notes found, fallback to title")
+		return pr.GetTitle(), true
+	}
+	n := f[1]
+	if strings.EqualFold(n, "none") || strings.EqualFold(n, "n/a") {
+		return "", false
+	}
+	return strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(n, "- "), "* ")), true
+}
+
+const noReleaseNotesLabel = "no release notes"
+
+// Return true if labels contain "no release notes".
+func shouldIgnore(pr *github.Issue) bool {
+	for _, l := range pr.Labels {
+		if l.GetName() == noReleaseNotesLabel {
+			return true
+		}
+	}
+	return false
 }
