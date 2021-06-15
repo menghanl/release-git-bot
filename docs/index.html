@@ -2,41 +2,47 @@
 <html lang='en'>
 
 <head>
-  <meta charset="utf-8">
-  <title>Release bot</title>
-  <meta name="description" content="Release bot">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel='stylesheet' href='https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/dark.css'>
+    <meta charset="utf-8">
+    <title>Release bot</title>
+    <meta name="description" content="Release bot">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/dark.css'>
 </head>
 
 <body>
-  <h1>Release bot</h1>
-  <p>Source: <a target="_blank" href="https://github.com/menghanl/release-git-bot">menghanl/release-git-bot</a></p>
+<h1>Release bot</h1>
+<p>Source: <a target="_blank" href="https://github.com/menghanl/release-git-bot">menghanl/release-git-bot</a></p>
 
-  <h2>Preparation</h2>
-  <ul>
+<h2>Preparation</h2>
+<ul>
     <li>Check <a target="_blank"
-        href="javascript:(function()%7Bfunction%20formatInt2(num)%20%7Breturn%20(%220%22%20%2B%20num).slice(-2)%7Dfunction%20lastWeekDate()%20%7Bvar%20today%20%3D%20new%20Date()%3Bvar%20lastWeek%20%3D%20new%20Date(today.getFullYear()%2C%20today.getMonth()%2C%20today.getDate()%20-%207)%3Breturn%20lastWeek.getFullYear()%20%2B%20%22-%22%20%2B%20formatInt2((lastWeek.getMonth()%20%2B%201))%20%2B%20%22-%22%20%2B%20formatInt2(lastWeek.getDate())%7Dfunction%20buildLink(date)%20%7Breturn%20%22https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc-go%2Fpulls%3Fq%3Dis%253Apr%2Bmerged%253A%253E%253D%22%20%2B%20date%7Dwindow.open(buildLink(lastWeekDate()))%7D)()">PRs
-        merged within a week</a> and make sure they have the correct label/milestone.</li>
+                 href="javascript:(function()%7Bfunction%20formatInt2(num)%20%7Breturn%20(%220%22%20%2B%20num).slice(-2)%7Dfunction%20lastWeekDate()%20%7Bvar%20today%20%3D%20new%20Date()%3Bvar%20lastWeek%20%3D%20new%20Date(today.getFullYear()%2C%20today.getMonth()%2C%20today.getDate()%20-%207)%3Breturn%20lastWeek.getFullYear()%20%2B%20%22-%22%20%2B%20formatInt2((lastWeek.getMonth()%20%2B%201))%20%2B%20%22-%22%20%2B%20formatInt2(lastWeek.getDate())%7Dfunction%20buildLink(date)%20%7Breturn%20%22https%3A%2F%2Fgithub.com%2Fgrpc%2Fgrpc-go%2Fpulls%3Fq%3Dis%253Apr%2Bmerged%253A%253E%253D%22%20%2B%20date%7Dwindow.open(buildLink(lastWeekDate()))%7D)()">PRs
+        merged within a week</a> and make sure they have the correct label/milestone.
+    </li>
     <li>Check the release notes.
-      <ul>
-        <li><a target="_blank" href="https://github.com/menghanl/release-note-page">menghanl/release-note-page</a></li>
-      </ul>
+        <ul>
+            <li><a target="_blank" href="https://github.com/menghanl/release-note-page">menghanl/release-note-page</a>
+            </li>
+        </ul>
     </li>
     <li>Sync your fork's master so it's up-to-date with <code>upstream:master</code>.</li>
     <li>Create a <a target="_blank" href="https://github.com/settings/tokens">github token</a> with <code>repo</code>,
-      <code>read:org</code>
-      and
-      <code>user:email</code> permissions.</li>
-  </ul>
+        <code>read:org</code>
+        and
+        <code>user:email</code> permissions.
+    </li>
+</ul>
 
-  <h2>Install or update the tool</h2>
-  <pre><code>
-    GO111MODULE=on go install github.com/menghanl/release-git-bot
+<h2>Install or update the tool</h2>
+<pre><code>
+    cd /tmp
+    git clone https://github.com/menghanl/release-git-bot.git
+    cd release-git-bot
+    go install .
   </code></pre>
 
-  <h2>Nokidding</h2>
-  <pre><code>
+<h2>Nokidding</h2>
+<pre><code>
     BOT_RELEASE_VERSION="1.16.0"
     BOT_GITHUB_TOKEN="your-token"
     release-git-bot -version "$BOT_RELEASE_VERSION" -token "$BOT_GITHUB_TOKEN" -nokidding
