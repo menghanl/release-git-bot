@@ -93,7 +93,8 @@ func getReleaseTitle(pr *github.Issue) (string, bool) {
 		log.Info(" -- no release notes found, fallback to title")
 		return pr.GetTitle(), true
 	}
-	n := f[1]
+	log.Info(" +++ ", f)
+	n := strings.TrimSpace(f[1])
 	if strings.EqualFold(n, "none") || strings.EqualFold(n, "n/a") {
 		log.Info(" -- skiping note: ", n)
 		return "", false
