@@ -41,7 +41,7 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 		if !ok {
 			continue // If ok==false, ignore this PR in the release note.
 		}
-		log.Infof(" [%v] - ", color.BlueString("%v", pr.GetNumber()))
+		log.Infof(" [%v] - %s", color.BlueString("%v", pr.GetNumber()), *pr.Title)
 		log.Info(color.GreenString("%-18q", label))
 		log.Infof(" from: %v\n", labelsToString(pr.Labels))
 
@@ -85,16 +85,17 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 	return &notes
 }
 
-var releaseNotesRegex = regexp.MustCompile(`(?s)^RELEASE NOTES:\s*(.*)`)
+var releaseNotesRegex = regexp.MustCompile(`(?s)RELEASE NOTES:\s*(.*)`)
 
 func getReleaseTitle(pr *github.Issue) (string, bool) {
 	f := releaseNotesRegex.FindStringSubmatch(*pr.Body)
 	if len(f) < 2 {
-		log.Info("no release notes found, fallback to title")
+		log.Info(" -- no release notes found, fallback to title")
 		return pr.GetTitle(), true
 	}
 	n := f[1]
 	if strings.EqualFold(n, "none") || strings.EqualFold(n, "n/a") {
+		log.Info(" -- skiping note: ", n)
 		return "", false
 	}
 	return strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(n, "- "), "* ")), true

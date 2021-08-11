@@ -23,7 +23,7 @@ func main() {
 	const (
 		upstreamUser = "grpc"
 		repo         = "grpc-go"
-		version      = "1.39.0"
+		version      = "1.40.0"
 	)
 
 	ver, err := semver.Make(version)
