@@ -12,7 +12,10 @@ See page: https://menghanl.github.io/release-git-bot/
 ### Install or update the tool:
 
 ```
-GO111MODULE=on go install github.com/menghanl/release-git-bot
+cd /tmp
+git clone https://github.com/menghanl/release-git-bot.git
+cd release-git-bot
+go install .
 ```
 
 ### Nokidding
