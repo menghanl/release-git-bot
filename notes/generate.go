@@ -88,7 +88,7 @@ func GenerateNotes(org, repo, version string, prs []*github.Issue, filters Filte
 var releaseNotesRegex = regexp.MustCompile(`(?s)RELEASE NOTES:\s*(.*)`)
 
 func getReleaseTitle(pr *github.Issue) (string, bool) {
-	f := releaseNotesRegex.FindStringSubmatch(*pr.Body)
+	f := releaseNotesRegex.FindStringSubmatch(pr.GetBody())
 	if len(f) < 2 {
 		log.Info(" -- no release notes found, fallback to title")
 		return pr.GetTitle(), true
